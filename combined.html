@@ -345,7 +345,7 @@
         <select id="monthSelect" class="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white"></select>
         <select id="yearSelect" class="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white"></select>
 
-        <span id="statusInfo" class="text-xs font-semibold text-slate-500 ml-2"></span>
+        <span id="statusInfo" class="text-xs font-semibold text-slate-600 ml-2"></span>
       </div>
 
       <div class="flex flex-wrap items-center gap-1.5">
@@ -359,16 +359,13 @@
     <!-- Roster Table Container -->
     <div id="printArea" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 overflow-x-auto">
       <div class="roster-wrapper" id="rosterWrapper">
-        <!-- Left Main Roster Table -->
         <table class="roster-table" id="rosterTable">
           <thead id="rosterHead"></thead>
           <tbody id="rosterBody"></tbody>
         </table>
 
-        <!-- Vertical Grey Divider -->
         <div class="side-divider"></div>
 
-        <!-- Right Legend Panel -->
         <div class="legend-panel">
           <div class="legend-top-blue"></div>
           <div class="legend-items-container" id="legendContainer"></div>
@@ -379,10 +376,10 @@
   </div>
 
   <script>
-    // ضع نفس مفتاح apiKey الحقيقي الموجود في ملف index.html المستقر لديك
+    // ضع مفتاح apiKey الحقيقي الموجود في ملف index.html المستقر لديك
     const firebaseConfig = {
       databaseURL: "https://leave-2027-default-rtdb.firebaseio.com",
-      apiKey: "AIzaSyA731dlhUgqoMGG7J_GUBn_H7vxvEPchms",
+      apiKey: "PUT_YOUR_REAL_FIREBASE_API_KEY_HERE",
       authDomain: "leave-2027.firebaseapp.com",
       projectId: "leave-2027"
     };
@@ -414,8 +411,8 @@
     let selectedMonth = new Date().getMonth();
     let selectedYear = new Date().getFullYear();
     let combinedData = {
-      hq: { version: "V1", staff: [], assignments: {} },
-      ems: { version: "V1", staff: [], assignments: {} }
+      hq: { version: "V1", staffList: [] },
+      ems: { version: "V1", staffList: [] }
     };
 
     // Render Legend
@@ -495,27 +492,89 @@
       loadCombinedData();
     });
 
-    function getMonthKey() {
-      return `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
+    function getCandidateMonthKeys() {
+      const m1 = String(selectedMonth + 1).padStart(2, "0"); // "12" (1-based padded)
+      const m0 = String(selectedMonth); // "11" (0-based)
+      const mShort = MONTHS[selectedMonth]; // "Dec"
+      return [
+        `${selectedYear}-${m1}`,
+        `${selectedYear}_${m1}`,
+        `${selectedYear}-${selectedMonth + 1}`,
+        `${selectedYear}_${selectedMonth + 1}`,
+        `${selectedYear}-${m0}`,
+        `${selectedYear}_${m0}`,
+        `${mShort}-${selectedYear}`,
+        `${mShort}_${selectedYear}`
+      ];
+    }
+
+    function normalizeRosterNode(pubRootObj) {
+      if (!pubRootObj || typeof pubRootObj !== "object") {
+        return { version: "-", staffList: [], availableKeys: [] };
+      }
+      const availableKeys = Object.keys(pubRootObj);
+      const candidates = getCandidateMonthKeys();
+      let node = null;
+      for (const k of candidates) {
+        if (pubRootObj[k]) {
+          node = pubRootObj[k];
+          break;
+        }
+      }
+      if (!node) {
+        return { version: "-", staffList: [], availableKeys };
+      }
+
+      const rawStaff = Array.isArray(node.staff) ? node.staff : (node.staff ? Object.values(node.staff) : []);
+      const globalAssign = node.assignments || node.shifts || node.roster || node.data || {};
+
+      const staffList = rawStaff.map((person, idx) => {
+        if (typeof person === "string") {
+          const perDays = globalAssign[person] || globalAssign[idx] || {};
+          return { name: person, days: perDays };
+        }
+        const pid = person.id || person.key || person.username || person.name || String(idx);
+        const perDays =
+          person.shifts ||
+          person.assignments ||
+          person.days ||
+          globalAssign[pid] ||
+          globalAssign[person.name] ||
+          globalAssign[idx] ||
+          {};
+        return {
+          name: person.name || person.fullName || pid,
+          days: perDays
+        };
+      });
+
+      return {
+        version: node.version || node.ver || "V1",
+        staffList,
+        availableKeys
+      };
     }
 
     async function loadCombinedData() {
-      const key = getMonthKey();
       document.getElementById("statusInfo").textContent = "Loading...";
       const [hqSnap, emsSnap] = await Promise.all([
-        db.ref(`${HQ_DB_ROOT}/published/${key}`).once("value"),
-        db.ref(`${EMS_DB_ROOT}/published/${key}`).once("value")
+        db.ref(`${HQ_DB_ROOT}/published`).once("value"),
+        db.ref(`${EMS_DB_ROOT}/published`).once("value")
       ]);
-      const hqVal = hqSnap.val() || { version: "-", staff: [], assignments: {} };
-      const emsVal = emsSnap.val() || { version: "-", staff: [], assignments: {} };
 
-      combinedData = {
-        hq: { version: hqVal.version || "V1", staff: hqVal.staff || [], assignments: hqVal.assignments || {} },
-        ems: { version: emsVal.version || "V1", staff: emsVal.staff || [], assignments: emsVal.assignments || {} }
-      };
+      const hqNorm = normalizeRosterNode(hqSnap.val());
+      const emsNorm = normalizeRosterNode(emsSnap.val());
 
-      document.getElementById("statusInfo").textContent =
-        `HQ: ${combinedData.hq.staff.length} staff (${hqVal.version || "Not Published"}) | EMS: ${combinedData.ems.staff.length} staff (${emsVal.version || "Not Published"})`;
+      combinedData = { hq: hqNorm, ems: emsNorm };
+
+      let infoMsg = `HQ: ${hqNorm.staffList.length} staff | EMS: ${emsNorm.staffList.length} staff`;
+      if (hqNorm.staffList.length === 0 && hqNorm.availableKeys.length > 0) {
+        infoMsg += ` (Available HQ months: ${hqNorm.availableKeys.join(", ")})`;
+      }
+      if (emsNorm.staffList.length === 0 && emsNorm.availableKeys.length > 0) {
+        infoMsg += ` (Available EMS months: ${emsNorm.availableKeys.join(", ")})`;
+      }
+      document.getElementById("statusInfo").textContent = infoMsg;
 
       renderRoster();
     }
@@ -533,6 +592,14 @@
         });
       }
       return days;
+    }
+
+    function getShiftForDay(daysObj, dayNum) {
+      if (!daysObj) return "";
+      if (Array.isArray(daysObj)) {
+        return daysObj[dayNum] || daysObj[dayNum - 1] || "";
+      }
+      return daysObj[dayNum] || daysObj[String(dayNum)] || daysObj[String(dayNum).padStart(2, "0")] || "";
     }
 
     function renderRoster() {
@@ -563,11 +630,10 @@
       });
 
       // 1. HQ Team
-      combinedData.hq.staff.forEach(person => {
-        const pAssign = combinedData.hq.assignments[person.id] || {};
+      combinedData.hq.staffList.forEach(person => {
         bodyHTML += `<tr><td class="staff-name-cell">${person.name}</td>`;
         days.forEach(d => {
-          const code = pAssign[d.day] || "";
+          const code = getShiftForDay(person.days, d.day);
           if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
           if (code === "A") shiftCounts.A[d.day]++;
           if (code === "B") shiftCounts.B[d.day]++;
@@ -581,11 +647,10 @@
       bodyHTML += `<tr class="team-divider-row"><td colspan="${days.length + 1}">--- EMS TEAM ---</td></tr>`;
 
       // 3. EMS Team
-      combinedData.ems.staff.forEach(person => {
-        const pAssign = combinedData.ems.assignments[person.id] || {};
+      combinedData.ems.staffList.forEach(person => {
         bodyHTML += `<tr><td class="staff-name-cell">${person.name}</td>`;
         days.forEach(d => {
-          const code = pAssign[d.day] || "";
+          const code = getShiftForDay(person.days, d.day);
           if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
           if (code === "A") shiftCounts.A[d.day]++;
           if (code === "B") shiftCounts.B[d.day]++;
@@ -619,18 +684,18 @@
     document.getElementById("btnExportCSV").addEventListener("click", () => {
       const days = getDaysInMonth(selectedYear, selectedMonth);
       let csv = `Team,Staff,${days.map(d => d.day).join(",")}\n`;
-      combinedData.hq.staff.forEach(p => {
-        const row = days.map(d => (combinedData.hq.assignments[p.id] && combinedData.hq.assignments[p.id][d.day]) || "");
+      combinedData.hq.staffList.forEach(p => {
+        const row = days.map(d => getShiftForDay(p.days, d.day));
         csv += `HQ,"${p.name}",${row.join(",")}\n`;
       });
-      combinedData.ems.staff.forEach(p => {
-        const row = days.map(d => (combinedData.ems.assignments[p.id] && combinedData.ems.assignments[p.id][d.day]) || "");
+      combinedData.ems.staffList.forEach(p => {
+        const row = days.map(d => getShiftForDay(p.days, d.day));
         csv += `EMS,"${p.name}",${row.join(",")}\n`;
       });
       const blob = new Blob([csv], { type: "text/csv" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `THC_OCC_Combined_${getMonthKey()}.csv`;
+      a.download = `THC_OCC_Combined_${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}.csv`;
       a.click();
     });
   </script>
