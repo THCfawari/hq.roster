@@ -378,7 +378,7 @@
   <script>
     const firebaseConfig = {
       databaseURL: "https://leave-2027-default-rtdb.firebaseio.com",
-      apiKey: "AIzaSyA731dlhUgqoMGG7J_GUBn_H7vxvEPchms",
+      apiKey: "PUT_YOUR_REAL_FIREBASE_API_KEY_HERE",
       authDomain: "leave-2027.firebaseapp.com",
       projectId: "leave-2027"
     };
@@ -407,12 +407,12 @@
     const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const DAY_NAMES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 
-    // يفتح افتراضياً على ديسمبر 2026 ويمكن تغييره لأي شهر
+    // يبدأ حصراً من ديسمبر 2026 فصاعداً
     let selectedMonth = 11; 
     let selectedYear = 2026;
     let combinedData = {
-      hq: { version: "V1", staffList: [] },
-      ems: { version: "V1", staffList: [] }
+      hq: { version: "V1", staffList: [], rawAssignments: {}, rawOverrides: {} },
+      ems: { version: "V1", staffList: [], rawAssignments: {}, rawOverrides: {} }
     };
 
     // Render Legend
@@ -427,26 +427,41 @@
       legendContainer.appendChild(row);
     });
 
-    // Populate Month & Year Selectors
+    // Populate Month & Year Selectors (Starting Dec 2026)
     const monthSelect = document.getElementById("monthSelect");
     const yearSelect = document.getElementById("yearSelect");
-    MONTHS.forEach((m, idx) => {
-      const opt = document.createElement("option");
-      opt.value = idx;
-      opt.textContent = m;
-      if (idx === selectedMonth) opt.selected = true;
-      monthSelect.appendChild(opt);
-    });
-    for (let y = 2025; y <= 2030; y++) {
+
+    function populateMonthOptions() {
+      monthSelect.innerHTML = "";
+      const startMonth = (selectedYear === 2026) ? 11 : 0; // في 2026 يبدأ من ديسمبر (11) فقط
+      if (selectedMonth < startMonth) selectedMonth = startMonth;
+      for (let idx = startMonth; idx < 12; idx++) {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        opt.textContent = MONTHS[idx];
+        if (idx === selectedMonth) opt.selected = true;
+        monthSelect.appendChild(opt);
+      }
+    }
+
+    for (let y = 2026; y <= 2030; y++) {
       const opt = document.createElement("option");
       opt.value = y;
       opt.textContent = y;
       if (y === selectedYear) opt.selected = true;
       yearSelect.appendChild(opt);
     }
+    populateMonthOptions();
 
-    monthSelect.addEventListener("change", () => { selectedMonth = parseInt(monthSelect.value); loadCombinedData(); });
-    yearSelect.addEventListener("change", () => { selectedYear = parseInt(yearSelect.value); loadCombinedData(); });
+    monthSelect.addEventListener("change", () => {
+      selectedMonth = parseInt(monthSelect.value);
+      loadCombinedData();
+    });
+    yearSelect.addEventListener("change", () => {
+      selectedYear = parseInt(yearSelect.value);
+      populateMonthOptions();
+      loadCombinedData();
+    });
     document.getElementById("btnRefresh").addEventListener("click", loadCombinedData);
 
     // Auth Handling
@@ -498,57 +513,112 @@
 
     function parsePublishedTree(pubObj, monthKey) {
       if (!pubObj || typeof pubObj !== "object") {
-        return { version: "-", staffList: [], availableMonths: [] };
+        return { version: "-", staffList: [], rawAssignments: {}, rawOverrides: {} };
       }
 
-      // 1. استخراج قائمة الموظفين من published/employees
       const rawEmployees = pubObj.employees || pubObj.staff || [];
       const empEntries = Array.isArray(rawEmployees)
-        ? rawEmployees.map((emp, idx) => [emp && emp.id ? emp.id : String(idx), emp])
+        ? rawEmployees.map((emp, idx) => [emp && emp.id ? String(emp.id) : String(idx), emp])
         : Object.entries(rawEmployees);
 
-      // 2. استخراج بيانات الشهر من published/months/YYYY-MM
       const monthsNode = pubObj.months || {};
-      const availableMonths = Object.keys(monthsNode);
       const monthData = monthsNode[monthKey];
 
       if (!monthData) {
-        return { version: "-", staffList: [], availableMonths };
+        return { version: "-", staffList: [], rawAssignments: {}, rawOverrides: {} };
       }
 
-      const assignments = monthData.assignments || {};
-      const overrides = monthData.overrides || {};
+      const rawAssignments = monthData.assignments || {};
+      const rawOverrides = monthData.overrides || {};
 
       const staffList = empEntries
         .filter(([, emp]) => emp !== null && emp !== undefined)
-        .map(([keyId, emp], idx) => {
+        .map(([keyId, emp]) => {
           const isObj = typeof emp === "object";
           const empName = isObj ? (emp.name || emp.fullName || keyId) : String(emp);
-          const empId = isObj && emp.id ? emp.id : keyId;
-
-          const baseDays =
-            assignments[empId] ||
-            assignments[empName] ||
-            assignments[idx] ||
-            {};
-          const overDays =
-            overrides[empId] ||
-            overrides[empName] ||
-            overrides[idx] ||
-            {};
-
+          const empId = isObj && emp.id !== undefined ? String(emp.id) : String(keyId);
           return {
-            name: empName,
-            baseDays,
-            overDays
+            id: empId,
+            keyId: String(keyId),
+            name: empName
           };
         });
 
       return {
         version: monthData.version || "V1",
         staffList,
-        availableMonths
+        rawAssignments,
+        rawOverrides
       };
+    }
+
+    // استخراج قيمة الشفت بدقة سواء كان التخزين (موظف -> يوم) أو (يوم -> موظف) أو (معرف_يوم)
+    function lookupCodeInMap(mapObj, person, dayNum, monthKey) {
+      if (!mapObj || typeof mapObj !== "object") return undefined;
+
+      const pad2 = String(dayNum).padStart(2, "0");
+      const dayKeys = [String(dayNum), pad2, `${monthKey}-${pad2}`];
+      const empKeys = [person.id, person.keyId, person.name].filter(Boolean);
+
+      // الحالة 1: مفتاح مركب مثل "empId_1" أو "empId-2026-12-01" أو "1_empId"
+      for (const ek of empKeys) {
+        for (const dk of dayKeys) {
+          const combo1 = `${ek}_${dk}`;
+          const combo2 = `${ek}-${dk}`;
+          const combo3 = `${dk}_${ek}`;
+          if (Object.prototype.hasOwnProperty.call(mapObj, combo1)) return mapObj[combo1];
+          if (Object.prototype.hasOwnProperty.call(mapObj, combo2)) return mapObj[combo2];
+          if (Object.prototype.hasOwnProperty.call(mapObj, combo3)) return mapObj[combo3];
+        }
+      }
+
+      // الحالة 2: الموظف أولاً ثم اليوم -> mapObj[empId][day]
+      for (const ek of empKeys) {
+        const sub = mapObj[ek];
+        if (sub && typeof sub === "object") {
+          for (const dk of dayKeys) {
+            if (Object.prototype.hasOwnProperty.call(sub, dk)) {
+              return sub[dk];
+            }
+          }
+        }
+      }
+
+      // الحالة 3: اليوم أولاً ثم الموظف -> mapObj[day][empId]
+      for (const dk of dayKeys) {
+        const sub = mapObj[dk];
+        if (sub && typeof sub === "object") {
+          for (const ek of empKeys) {
+            if (Object.prototype.hasOwnProperty.call(sub, ek)) {
+              return sub[ek];
+            }
+          }
+        }
+      }
+
+      return undefined;
+    }
+
+    function normalizeCodeValue(rawVal) {
+      if (rawVal === undefined || rawVal === null) return "";
+      let val = rawVal;
+      if (typeof val === "object") {
+        val = val.code ?? val.shift ?? val.value ?? "";
+      }
+      const str = String(val).trim().toUpperCase();
+      if (str === "OFF" || str === "NONE" || str === "-") return "";
+      return str;
+    }
+
+    function getFinalShift(teamData, person, dayNum, monthKey) {
+      // التحقق أولاً من overrides حتى لو كانت القيمة "" (مسح شفت)
+      const ovRaw = lookupCodeInMap(teamData.rawOverrides, person, dayNum, monthKey);
+      if (ovRaw !== undefined) {
+        return normalizeCodeValue(ovRaw);
+      }
+      // ثم الرجوع إلى assignments
+      const baseRaw = lookupCodeInMap(teamData.rawAssignments, person, dayNum, monthKey);
+      return normalizeCodeValue(baseRaw);
     }
 
     async function loadCombinedData() {
@@ -565,14 +635,8 @@
 
       combinedData = { hq: hqParsed, ems: emsParsed };
 
-      let infoMsg = `HQ: ${hqParsed.staffList.length} staff (${hqParsed.version}) | EMS: ${emsParsed.staffList.length} staff (${emsParsed.version})`;
-      if (hqParsed.staffList.length === 0 && hqParsed.availableMonths.length > 0) {
-        infoMsg += ` [HQ Months: ${hqParsed.availableMonths.join(", ")}]`;
-      }
-      if (emsParsed.staffList.length === 0 && emsParsed.availableMonths.length > 0) {
-        infoMsg += ` [EMS Months: ${emsParsed.availableMonths.join(", ")}]`;
-      }
-      document.getElementById("statusInfo").textContent = infoMsg;
+      document.getElementById("statusInfo").textContent =
+        `HQ: ${hqParsed.staffList.length} staff (${hqParsed.version}) | EMS: ${emsParsed.staffList.length} staff (${emsParsed.version})`;
 
       renderRoster();
     }
@@ -592,29 +656,8 @@
       return days;
     }
 
-    function readDayCode(container, dayNum) {
-      if (!container) return "";
-      const pad2 = String(dayNum).padStart(2, "0");
-      const fullDate = `${getMonthKey()}-${pad2}`;
-      let val = "";
-      if (Array.isArray(container)) {
-        val = container[dayNum] ?? container[dayNum - 1] ?? "";
-      } else {
-        val = container[dayNum] ?? container[String(dayNum)] ?? container[pad2] ?? container[fullDate] ?? "";
-      }
-      if (val && typeof val === "object") {
-        val = val.code || val.shift || val.value || "";
-      }
-      return String(val || "").trim();
-    }
-
-    function getFinalShift(person, dayNum) {
-      const ov = readDayCode(person.overDays, dayNum);
-      if (ov) return ov;
-      return readDayCode(person.baseDays, dayNum);
-    }
-
     function renderRoster() {
+      const monthKey = getMonthKey();
       const days = getDaysInMonth(selectedYear, selectedMonth);
       const thead = document.getElementById("rosterHead");
       const tbody = document.getElementById("rosterBody");
@@ -645,7 +688,7 @@
       combinedData.hq.staffList.forEach(person => {
         bodyHTML += `<tr><td class="staff-name-cell">${person.name}</td>`;
         days.forEach(d => {
-          const code = getFinalShift(person, d.day);
+          const code = getFinalShift(combinedData.hq, person, d.day, monthKey);
           if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
           if (code === "A") shiftCounts.A[d.day]++;
           if (code === "B") shiftCounts.B[d.day]++;
@@ -662,7 +705,7 @@
       combinedData.ems.staffList.forEach(person => {
         bodyHTML += `<tr><td class="staff-name-cell">${person.name}</td>`;
         days.forEach(d => {
-          const code = getFinalShift(person, d.day);
+          const code = getFinalShift(combinedData.ems, person, d.day, monthKey);
           if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
           if (code === "A") shiftCounts.A[d.day]++;
           if (code === "B") shiftCounts.B[d.day]++;
@@ -694,20 +737,21 @@
 
     // CSV Export
     document.getElementById("btnExportCSV").addEventListener("click", () => {
+      const monthKey = getMonthKey();
       const days = getDaysInMonth(selectedYear, selectedMonth);
       let csv = `Team,Staff,${days.map(d => d.day).join(",")}\n`;
       combinedData.hq.staffList.forEach(p => {
-        const row = days.map(d => getFinalShift(p, d.day));
+        const row = days.map(d => getFinalShift(combinedData.hq, p, d.day, monthKey));
         csv += `HQ,"${p.name}",${row.join(",")}\n`;
       });
       combinedData.ems.staffList.forEach(p => {
-        const row = days.map(d => getFinalShift(p, d.day));
+        const row = days.map(d => getFinalShift(combinedData.ems, p, d.day, monthKey));
         csv += `EMS,"${p.name}",${row.join(",")}\n`;
       });
       const blob = new Blob([csv], { type: "text/csv" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `THC_OCC_Combined_${getMonthKey()}.csv`;
+      a.download = `THC_OCC_Combined_${monthKey}.csv`;
       a.click();
     });
   </script>
