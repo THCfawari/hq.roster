@@ -414,11 +414,11 @@
                 }
             }
 
-            // استخراج بيانات كل شركة بنفس منطق الملف الأصلي تماماً
             function extractDepartmentData(pubObj, monthKey) {
                 const defaultRes = {
                     employees: [],
                     assignments: {},
+                    counterRows: [],
                     version: "-",
                     codes: JSON.parse(JSON.stringify(DEFAULT_CODES))
                 };
@@ -459,7 +459,7 @@
 
                 const monthRec = (pubObj.months && pubObj.months[monthKey]) ? pubObj.months[monthKey] : null;
                 if (!monthRec) {
-                    return { employees, assignments: {}, version: "Not Published", codes: codesList };
+                    return { employees, assignments: {}, counterRows: [], version: "Not Published", codes: codesList };
                 }
 
                 const cleanAssign = {};
@@ -476,15 +476,19 @@
                     });
                 }
 
+                const extraCounters = Array.isArray(monthRec.counterRows)
+                    ? monthRec.counterRows.map(c => String(c).trim().toUpperCase())
+                    : [];
+
                 return {
                     employees,
                     assignments: cleanAssign,
+                    counterRows: extraCounters,
                     version: monthRec.version ? String(monthRec.version) : "V1",
                     codes: codesList
                 };
             }
 
-            // دمج أكواد الألوان من HQ و EMS بحيث أي كود مخصص في أي شركة يظهر بلونه الدقيق
             function mergeCodeDefinitions(hqCodes, emsCodes) {
                 const map = new Map();
                 hqCodes.forEach(c => map.set(c.code, c));
@@ -567,8 +571,15 @@
                 if (showHQ) countEmployeeShifts(hqData.employees, hqData.assignments);
                 if (showEMS) countEmployeeShifts(emsData.employees, emsData.assignments);
 
+                // دمج الصفوف السفلية الثابتة (A, B, C) مع أي صف إضافي مفعّل مثل D
+                const activeCounterCodes = Array.from(new Set([
+                    ...CORE_COUNTER_CODES,
+                    ...(showHQ ? hqData.counterRows : []),
+                    ...(showEMS ? emsData.counterRows : [])
+                ]));
+
                 const showDividerRow = (showHQ && showEMS);
-                const totalTbodyRows = visHQ.length + (showDividerRow ? 1 : 0) + visEMS.length + 1 + CORE_COUNTER_CODES.length;
+                const totalTbodyRows = visHQ.length + (showDividerRow ? 1 : 0) + visEMS.length + 1 + activeCounterCodes.length;
 
                 const legendRows = mergedCodes.map(c => ({ type: "code", codeObj: c }));
                 while (legendRows.length < totalTbodyRows) {
@@ -762,9 +773,10 @@
                 html += `</tr>`;
                 globalRowIndex++;
 
-                // 5. Consolidated Counter Rows (A, B, C)
-                CORE_COUNTER_CODES.forEach(codeStr => {
+                // 5. Consolidated Counter Rows (A, B, C + any enabled rows like D)
+                activeCounterCodes.forEach(codeStr => {
                     const def = getCodeDef(codeStr);
+                    const isCore = CORE_COUNTER_CODES.includes(codeStr);
                     const txtColor = resolveCodeTextColor(def);
                     const patCls = getPatternClass(def.pattern);
                     const crispCls = (patCls === "pattern-stripes" && txtColor.toLowerCase() === "#000000") ? "crisp-striped-text" : "";
@@ -780,7 +792,7 @@
                     `;
                     daysList.forEach(dObj => {
                         const val = countsMap[dObj.day] || 0;
-                        const isZeroAlert = (val === 0);
+                        const isZeroAlert = isCore && (val === 0);
                         const cellBg = isZeroAlert ? "#dc2626" : "#ffffff";
                         const cellText = isZeroAlert ? "#ffffff" : "#0f172a";
                         const cellFont = isZeroAlert ? "text-sm font-black" : "text-xs font-extrabold";
@@ -944,7 +956,6 @@
                     document.getElementById("loginGateOverlay").classList.add("hidden");
                     document.getElementById("protectedAppShell").classList.remove("hidden");
 
-                    // استماع لحظي (Real-time) للنسخة المعتمدة لكل من HQ و EMS
                     dbInstance.ref(HQ_DB_PATH + "/published").on("value", function (snap) {
                         state.hqPublished = snap.val();
                         renderAll();
