@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OCC / THC HQ — Monthly Shift Roster</title>
+  <style>
+    :root {
+      --bg-page: #f4f6f9;
+      --bg-card: #ffffff;
+      --border-heavy: 2.5px solid #1e293b;
+      --border-grid: 1.5px solid #334155;
+      --border-soft: 1px solid #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --primary: #1d4ed8;
+      --primary-hover: #1e40af;
+      --danger: #dc2626;
+      --success: #15803d;
+      --warning: #b45309;
+    }
+
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { margin: 0; padding: 14px; background: var(--bg-page); color: var(--text-main); }
+
+    /* Login Gate Overlay */
+    #loginGate {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .login-card {
+      background: #fff; width: 100%; max-width: 400px; border-radius: 14px;
+      padding: 28px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+      border: 3px solid #3b82f6;
+    }
+    .login-card h2 { margin: 0 0 6px; font-size: 20px; color: #0f172a; text-align: center; }
+    .login-card p { margin: 0 0 20px; font-size: 13px; color: #64748b; text-align: center; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 5px; color: #334155; }
+    .form-group input {
+      width: 100%; padding: 10px 12px; border: 2px solid #cbd5e1; border-radius: 8px;
+      font-size: 14px; outline: none; transition: border-color .2s;
+    }
+    .form-group input:focus { border-color: #2563eb; }
+    .login-btn {
+      width: 100%; padding: 11px; background: #1d4ed8; color: #fff; border: none;
+      border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    .login-btn:hover { background: #1e40af; }
+    #loginError { color: #dc2626; font-size: 12.5px; font-weight: 600; margin-top: 10px; text-align: center; min-height: 18px; }
+
+    /* Main App Container (Hidden until auth) */
+    #appContainer { display: none; }
+
+    /* Top Header & Controls */
+    .top-bar {
+      background: var(--bg-card); border: var(--border-heavy); border-radius: 10px;
+      padding: 12px 16px; margin-bottom: 12px;
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .brand-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .brand-title h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: .3px; }
+    .badge-role {
+      padding: 4px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 800;
+      text-transform: uppercase;
+    }
+    .role-admin { background: #dbeafe; color: #1e40af; border: 1.5px solid #2563eb; }
+    .role-viewer { background: #f1f5f9; color: #334155; border: 1.5px solid #94a3b8; }
+
+    .status-banner {
+      padding: 5px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 700;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .status-draft { background: #fef3c7; color: #92400e; border: 1.5px solid #f59e0b; }
+    .status-published { background: #dcfce7; color: #166534; border: 1.5px solid #22c55e; }
+
+    .nav-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    select, input[type="text"], input[type="password"], input[type="number"] {
+      padding: 6px 10px; border: 1.5px solid #94a3b8; border-radius: 7px; font-size: 13px; font-weight: 600;
+    }
+
+    /* Admin Toolbar & Drag-and-Drop */
+    .admin-toolbar {
+      background: var(--bg-card); border: var(--border-heavy); border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 12px;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    }
+    .admin-toolbar.arranging {
+      background: #eff6ff; border: 2.5px dashed #2563eb;
+    }
+    .tool-btn {
+      padding: 7px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 700;
+      border: 1.5px solid #cbd5e1; background: #f8fafc; color: #0f172a;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+      transition: transform .15s, box-shadow .15s, opacity .15s;
+      user-select: none;
+    }
+    .tool-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+    .tool-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-publish { background: #15803d; color: #fff; border-color: #14532d; }
+    .btn-receipts { background: #7e22ce; color: #fff; border-color: #581c87; }
+    .btn-sync { background: #1d4ed8; color: #fff; border-color: #1e3a8a; }
+    .btn-rules { background: #b45309; color: #fff; border-color: #78350f; }
+    .btn-add { background: #047857; color: #fff; border-color: #064e3b; }
+    .btn-code { background: #4338ca; color: #fff; border-color: #312e81; }
+    .btn-danger { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+    .btn-signout { background: #dc2626; color: #fff; border-color: #991b1b; }
+    .btn-arrange { background: #0f172a; color: #fff; border-color: #0f172a; }
+    .btn-arrange.active { background: #16a34a; border-color: #14532d; }
+
+    .admin-toolbar.arranging .tool-btn[data-btn-id] {
+      cursor: grab; border-style: dashed; border-width: 2px; border-color: #2563eb;
+    }
+    .admin-toolbar.arranging .tool-btn[data-btn-id]:active { cursor: grabbing; }
+    .tool-btn.dragging { opacity: 0.35; transform: scale(0.95); }
+    .tool-btn.drag-over { outline: 3px solid #f59e0b; outline-offset: 2px; }
+
+    /* Paint Brush Palette */
+    .palette-bar {
+      background: var(--bg-card); border: var(--border-heavy); border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 12px;
+    }
+    .palette-title { font-size: 12px; font-weight: 800; color: #475569; margin-bottom: 8px; }
+    .palette-items { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .brush-chip {
+      display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px;
+      border-radius: 20px; border: 2px solid #334155; cursor: pointer;
+      font-size: 12.5px; font-weight: 700; transition: all .15s;
+    }
+    .brush-chip.active { outline: 3px solid #0f172a; outline-offset: 2px; transform: scale(1.03); }
+    .chip-code {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 26px; height: 22px; padding: 0 6px; border-radius: 6px;
+      background: rgba(255,255,255,0.85); color: #0f172a;
+      font-weight: 900; font-size: 12px; flex-shrink: 0;
+    }
+
+    /* Compare Filter Bar */
+    .filter-bar {
+      background: var(--bg-card); border: var(--border-heavy); border-radius: 10px;
+      padding: 8px 14px; margin-bottom: 12px;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    }
+    .filter-chip {
+      padding: 4px 10px; border-radius: 16px; border: 1.5px solid #94a3b8;
+      background: #f8fafc; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .filter-chip.selected { background: #1d4ed8; color: #fff; border-color: #1e3a8a; }
+
+    /* Roster Table */
+    .table-wrapper {
+      background: var(--bg-card); border: var(--border-heavy); border-radius: 10px;
+      overflow-x: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    table { border-collapse: collapse; width: 100%; min-width: 1150px; }
+    th, td {
+      border: var(--border-grid); text-align: center; padding: 4px 2px;
+      font-size: 12.5px; font-weight: 700; position: relative;
+    }
+    thead th { background: #1e293b; color: #fff; padding: 6px 3px; font-size: 12px; }
+    thead tr.day-names th { background: #334155; font-size: 11px; }
+    th.weekend, td.weekend { background-color: rgba(241, 245, 249, 0.7); }
+    thead th.weekend { background: #475569; color: #fde047; }
+
+    .emp-col {
+      position: sticky; left: 0; z-index: 5; background: #f8fafc;
+      min-width: 195px; max-width: 230px; text-align: left; padding: 5px 8px;
+      border-right: var(--border-heavy); font-weight: 800;
+    }
+    thead .emp-col { background: #0f172a; color: #fff; z-index: 6; }
+
+    .emp-cell-flex {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    }
+    .emp-name-wrap { display: flex; align-items: center; gap: 5px; overflow: hidden; }
+    .drag-handle {
+      cursor: grab; color: #2563eb; font-size: 14px; font-weight: 900;
+      padding: 0 3px; user-select: none;
+    }
+    .drag-handle:active { cursor: grabbing; }
+    .emp-edit-btn {
+      background: #e2e8f0; border: 1px solid #94a3b8; border-radius: 5px;
+      padding: 2px 5px; font-size: 11px; cursor: pointer; color: #334155;
+      flex-shrink: 0;
+    }
+    .emp-edit-btn:hover { background: #cbd5e1; }
+
+    tr.emp-row.row-dragging { opacity: 0.4; background: #dbeafe !important; }
+    tr.emp-row.row-drag-over td { border-top: 3.5px solid #2563eb !important; }
+
+    .shift-cell {
+      width: 34px; height: 32px; cursor: pointer; user-select: none;
+      transition: filter .1s;
+    }
+    .shift-cell:hover { filter: brightness(0.93); }
+
+    /* Synced Leave Indicator */
+    .synced-leave::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: #2563eb;
+    }
+    .synced-badge {
+      position: absolute; bottom: 1px; right: 2px; font-size: 8.5px;
+      color: #1d4ed8; font-weight: 900; line-height: 1;
+    }
+
+    /* Warning & Override Badges */
+    .warn-triangle {
+      position: absolute; top: 1px; left: 2px; font-size: 10px;
+      color: #dc2626; line-height: 1; pointer-events: none;
+    }
+    .override-ok {
+      position: absolute; top: 1px; left: 2px; font-size: 9.5px;
+      color: #15803d; line-height: 1; pointer-events: none;
+    }
+    .conflict-ring { outline: 2.5px solid #dc2626; outline-offset: -2.5px; }
+
+    /* Summary Rows */
+    tr.summary-divider td { border-top: var(--border-heavy); }
+    tr.summary-row td.emp-col { background: #e2e8f0; font-size: 12px; }
+    td.zero-alert {
+      background: #dc2626 !important; color: #ffffff !important;
+      font-weight: 900 !important; font-size: 13.5px !important;
+    }
+
+    /* Footer */
+    .roster-footer {
+      margin-top: 10px; padding: 8px 14px; background: #fff; border: var(--border-heavy);
+      border-radius: 8px; display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px; font-size: 12px; font-weight: 700; color: #334155;
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65);
+      display: none; align-items: center; justify-content: center; z-index: 5000; padding: 16px;
+    }
+    .modal-box {
+      background: #fff; border: var(--border-heavy); border-radius: 12px;
+      width: 100%; max-width: 640px; max-height: 85vh; overflow-y: auto; padding: 20px;
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 14px;
+    }
+    .modal-header h3 { margin: 0; font-size: 17px; }
+    .close-btn {
+      background: #e2e8f0; border: none; border-radius: 6px; padding: 5px 10px;
+      font-weight: 800; cursor: pointer;
+    }
+    .list-item {
+      padding: 8px 10px; border: 1.5px solid #cbd5e1; border-radius: 8px;
+      margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      font-size: 13px;
+    }
+
+    @media print {
+      #loginGate, .admin-toolbar, .palette-bar, .filter-bar, .no-print, .emp-edit-btn, .drag-handle { display: none !important; }
+      body { background: #fff; padding: 0; }
+      .table-wrapper { border: 2px solid #000; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 1. MANDATORY LOGIN GATE -->
+<div id="loginGate">
+  <div class="login-card">
+    <h2>OCC / THC HQ</h2>
+    <p>Monthly Shift Roster — Authorized Personnel Only</p>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="loginUsername" placeholder="e.g. fawari" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="login-btn" id="btnDoLogin">Sign In</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- 2. MAIN ROSTER APPLICATION -->
+<div id="appContainer">
+  <!-- Header -->
+  <div class="top-bar">
+    <div class="brand-title">
+      <h1>OCC / THC HQ — Monthly Shift Roster</h1>
+      <span id="roleBadge" class="badge-role role-viewer">Viewer</span>
+      <span id="modeBanner" class="status-banner status-published">● Published Official</span>
+    </div>
+
+    <div class="nav-controls">
+      <select id="monthSelect"></select>
+      <select id="yearSelect"></select>
+      <span id="versionTag" style="font-weight:900; padding:5px 10px; background:#e2e8f0; border-radius:7px;">V1</span>
+      <button class="tool-btn no-print" onclick="window.print()">🖨️ Print / PDF</button>
+      <button class="tool-btn no-print" onclick="openChangePassModal()">🔑 Password</button>
+      <button class="tool-btn btn-signout no-print" id="btnViewerSignOut" style="display:none;" onclick="handleSignOut()">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Admin Toolbar (Arrangeable via Drag & Drop) -->
+  <div class="admin-toolbar no-print" id="adminToolbar" style="display:none;">
+    <button class="tool-btn" data-btn-id="viewPub" id="btnToggleView" onclick="toggleDraftPublishedView()">👁️ View Published</button>
+    <button class="tool-btn btn-publish" data-btn-id="publish" id="btnPublish" onclick="publishDraft()">📢 Publish & Approve</button>
+    <button class="tool-btn btn-receipts" data-btn-id="receipts" onclick="openReceiptsModal()">👁️ Read Receipts</button>
+    <button class="tool-btn" data-btn-id="undo" id="btnUndo" onclick="undoAction()" disabled>↶ Undo</button>
+    <button class="tool-btn" data-btn-id="redo" id="btnRedo" onclick="redoAction()" disabled>↷ Redo</button>
+    <button class="tool-btn btn-sync" data-btn-id="sync" onclick="openSyncModal()">⇄ Sync Leaves</button>
+    <button class="tool-btn btn-rules" data-btn-id="rules" onclick="openRulesModal()">⚠️ Rules & Alerts</button>
+    <button class="tool-btn btn-add" data-btn-id="addEmp" onclick="openEmpModal()">+ Add Employee</button>
+    <button class="tool-btn" data-btn-id="arrangeStaff" id="btnArrangeStaff" onclick="toggleArrangeStaffMode()">↕️ Arrange Staff</button>
+    <button class="tool-btn btn-code" data-btn-id="addCode" onclick="openAddCodeModal()">+ Add Code</button>
+    <button class="tool-btn" data-btn-id="copyPrev" onclick="copyPreviousMonth()">Copy Prev Month</button>
+    <button class="tool-btn" data-btn-id="lock" id="btnLockMonth" onclick="toggleMonthLock()">🔓 Lock Month</button>
+    <button class="tool-btn" data-btn-id="exportCsv" onclick="exportCSV()">Export CSV</button>
+    <button class="tool-btn" data-btn-id="audit" onclick="openAuditModal()">📋 Audit Log</button>
+    <button class="tool-btn btn-danger" data-btn-id="clear" onclick="clearMonthData()">Clear Month</button>
+    <button class="tool-btn btn-signout" data-btn-id="signOut" onclick="handleSignOut()">Sign Out</button>
+    <button class="tool-btn btn-arrange" id="btnArrange" onclick="toggleArrangeMode()" title="Drag and drop buttons to customize order">⇄ Arrange Buttons</button>
+    <button class="tool-btn" id="btnResetOrder" onclick="resetToolbarOrder()" style="display:none;" title="Reset default order">↺ Reset</button>
+  </div>
+
+  <!-- Paint Brush Palette (Admins Only) -->
+  <div class="palette-bar no-print" id="paletteBar" style="display:none;">
+    <div class="palette-title">Active Paint Brush (Click a code, then click/drag on grid cells — Alt+Click cell to Override Alert):</div>
+    <div class="palette-items" id="paletteItems"></div>
+  </div>
+
+  <!-- Compare Filter Bar -->
+  <div class="filter-bar no-print" id="filterBar">
+    <strong style="font-size:12.5px;">🔍 Compare Staff:</strong>
+    <div id="filterChips" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+    <button class="tool-btn" style="padding:4px 10px; font-size:12px;" onclick="clearCompareFilter()">Show All</button>
+  </div>
+
+  <!-- Main Roster Table -->
+  <div class="table-wrapper">
+    <table id="rosterTable">
+      <thead id="rosterHead"></thead>
+      <tbody id="rosterBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Footer -->
+  <div class="roster-footer">
+    <span id="loggedUserDisplay">User: —</span>
+    <span id="lastUpdatedDisplay">Last Published Update: —</span>
+  </div>
+</div>
+
+<!-- MODALS -->
+<!-- Add / Edit Employee Modal (Links Display Name + Firebase Username for Read Receipts) -->
+<div class="modal-backdrop" id="empModal">
+  <div class="modal-box" style="max-width:440px;">
+    <div class="modal-header">
+      <h3 id="empModalTitle">+ Add Employee</h3>
+      <button class="close-btn" onclick="closeModal('empModal')">✕</button>
+    </div>
+    <input type="hidden" id="editEmpId" />
+    <div class="form-group">
+      <label>Display Name in Roster (e.g. Ali Alharbi)</label>
+      <input type="text" id="empDisplayName" placeholder="Full or short name shown in table" />
+    </div>
+    <div class="form-group">
+      <label>Login Username (for Read Receipts matching, e.g. aalharbi)</label>
+      <input type="text" id="empLoginUsername" placeholder="Username before @occ.local (optional)" />
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:14px;">
+      <button class="tool-btn btn-add" onclick="saveEmployeeModal()">Save Employee</button>
+      <button class="tool-btn btn-danger" id="btnDeleteEmp" style="display:none;" onclick="deleteEmployeeFromModal()">🗑️ Delete Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-backdrop" id="changePassModal">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-header">
+      <h3>🔑 Change Account Password</h3>
+      <button class="close-btn" onclick="closeModal('changePassModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Current Password</label>
+      <input type="password" id="curPasswordInput" placeholder="Enter current password" />
+    </div>
+    <div class="form-group">
+      <label>New Password (min 6 characters)</label>
+      <input type="password" id="newPasswordInput" placeholder="Enter new password" />
+    </div>
+    <div class="form-group">
+      <label>Confirm New Password</label>
+      <input type="password" id="confirmPasswordInput" placeholder="Re-enter new password" />
+    </div>
+    <button class="tool-btn btn-sync" onclick="submitPasswordChange()">Update Password</button>
+    <div id="passChangeMsg" style="margin-top:10px; font-size:12.5px; font-weight:700;"></div>
+  </div>
+</div>
+
+<!-- Sync Leaves Modal -->
+<div class="modal-backdrop" id="syncModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>⇄ Sync Annual Leaves (2027 Planner)</h3>
+      <button class="close-btn" onclick="closeModal('syncModal')">✕</button>
+    </div>
+    <p style="font-size:13px; color:#475569;">Select the Firebase planner source to pull approved vacation dates (<code>YYYY-MM-DD</code>) for the active month:</p>
+    <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+      <button class="tool-btn btn-sync" onclick="syncLeavesFromSource('leave_planner_2027')">Sync from OCC Planner (leave_planner_2027)</button>
+      <button class="tool-btn btn-add" onclick="syncLeavesFromSource('emsleave_planner_2027')">Sync from EMS Planner (emsleave_planner_2027)</button>
+    </div>
+    <div id="syncStatusMsg" style="font-size:13px; font-weight:700;"></div>
+  </div>
+</div>
+
+<!-- Rules & Alerts Modal -->
+<div class="modal-backdrop" id="rulesModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>⚠️ Shift Rules, Fatigue Alerts & Overrides</h3>
+      <button class="close-btn" onclick="closeModal('rulesModal')">✕</button>
+    </div>
+    <div style="margin-bottom:14px; padding:10px; background:#f8fafc; border-radius:8px; border:1.5px solid #cbd5e1;">
+      <strong>Add Non-Coincidence Rule (Prevent 2 Staff on Same Shift):</strong>
+      <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+        <select id="ruleEmp1"></select>
+        <span style="align-self:center; font-weight:900;">≠</span>
+        <select id="ruleEmp2"></select>
+        <button class="tool-btn btn-rules" onclick="addSeparationRule()">+ Add Rule</button>
+      </div>
+      <div id="separationRulesList" style="margin-top:10px;"></div>
+    </div>
+    <div>
+      <strong>Active Alerts This Month (C→A ≤ 2 Days Rest & Same-Shift Conflicts):</strong>
+      <div id="activeAlertsList" style="margin-top:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Read Receipts Modal (40-Day Retention) -->
+<div class="modal-backdrop" id="receiptsModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>👁️ Staff Read Receipts (Last 40 Days)</h3>
+      <button class="close-btn" onclick="closeModal('receiptsModal')">✕</button>
+    </div>
+    <div id="currentVersionReceiptSummary" style="margin-bottom:14px;"></div>
+    <h4 style="margin:10px 0 6px; font-size:14px;">Historical View Log (Auto-cleaned after 40 days):</h4>
+    <div id="receiptsHistoryList"></div>
+  </div>
+</div>
+
+<!-- Audit Log Modal -->
+<div class="modal-backdrop" id="auditModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>📋 Supervisor Audit Log</h3>
+      <button class="close-btn" onclick="closeModal('auditModal')">✕</button>
+    </div>
+    <div id="auditLogList"></div>
+  </div>
+</div>
+
+<!-- Add Custom Code Modal -->
+<div class="modal-backdrop" id="addCodeModal">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-header">
+      <h3>+ Add Custom Shift / Leave Code</h3>
+      <button class="close-btn" onclick="closeModal('addCodeModal')">✕</button>
+    </div>
+    <div class="form-group"><label>Code Symbol (e.g. TR, OD)</label><input type="text" id="newCodeKey" maxlength="4" /></div>
+    <div class="form-group"><label>Description</label><input type="text" id="newCodeLabel" placeholder="e.g. Special Duty" /></div>
+    <div class="form-group"><label>Background Color</label><input type="color" id="newCodeBg" value="#bae6fd" /></div>
+    <div class="form-group"><label>Text Color</label><input type="color" id="newCodeText" value="#0f172a" /></div>
+    <button class="tool-btn btn-code" onclick="saveNewShiftCode()">Save Code</button>
+  </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,
+    EmailAuthProvider, reauthenticateWithCredential, updatePassword
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA731dlhUgqoMGG7J_GUBn_H7vxvEPchms",
+    databaseURL: "https://leave-2027-default-rtdb.firebaseio.com",
+    projectId: "leave-2027",
+    authDomain: "leave-2027.firebaseapp.com"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  // Authorized Supervisors List
+  const ADMIN_USERS = ["fawari", "aalharb", "malrehaili", "aalshalawi", "abasaeed", "asofta"];
+  const DOMAIN_SUFFIX = "@occ.local";
+  const FORTY_DAYS_MS = 40 * 24 * 60 * 60 * 1000;
+
+  let currentUser = null;
+  let currentUsername = "";
+  let isAdmin = false;
+  let viewingDraft = true;
+  let activeBrush = "A";
+  let isMouseDown = false;
+  let arrangeMode = false;
+  let arrangeStaffMode = false;
+
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  let selectedYear = 2026;
+  let selectedMonth = 11; // Dec (0-indexed)
+
+  const DEFAULT_CODES = {
+    A:  { label: "07:00-15:00", bg: "#fef08a", text: "#0f172a", isWork: true },
+    B:  { label: "15:00-23:00", bg: "#bae6fd", text: "#0f172a", isWork: true },
+    C:  { label: "23:00-07:00", bg: "#94a3b8", text: "#0f172a", isWork: true },
+    D:  { label: "11:00-16:00", bg: "#fed7aa", text: "#0f172a", isWork: true },
+    O:  { label: "Office duty", bg: "#60a5fa", text: "#0f172a", isWork: true },
+    S:  { label: "Sick", bg: "#ef4444", text: "#ffffff", isWork: false },
+    V:  { label: "Vacation", bg: "#fbcfe8", text: "#0f172a", isWork: false },
+    T:  { label: "Training / Test", bg: "#1e3a8a", text: "#ffffff", isWork: true },
+    MT: { label: "Meeting / Task", bg: "#f59e0b", text: "#0f172a", isWork: true },
+    E:  { label: "Family reason", bg: "#b91c1c", text: "#ffffff", isWork: false },
+    SW: { label: "Shift Swap", bg: "#2563eb", text: "#ffffff", isWork: true },
+    CD: { label: "Compensation Day", bg: "#475569", text: "#ffffff", isWork: false },
+    ERASER: { label: "Eraser (OFF)", bg: "#ffffff", text: "#0f172a", isWork: false }
+  };
+
+  let state = {
+    employees: [],
+    shiftCodes: structuredClone(DEFAULT_CODES),
+    monthsData: {},
+    separationRules: []
+  };
+
+  let publishedSnapshot = null;
+  let draftSnapshot = null;
+  let undoStack = [];
+  let redoStack = [];
+  let compareFilterIds = new Set();
+
+  // Custom Non-Blocking Message Toast Helper
+  function showToast(message, isError = false) {
+    let toast = document.getElementById("customToastBanner");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "customToastBanner";
+      toast.style.cssText = "position:fixed;bottom:18px;right:18px;z-index:99999;padding:12px 18px;border-radius:10px;font-weight:700;font-size:13px;box-shadow:0 10px 25px rgba(0,0,0,0.25);transition:opacity .25s;";
+      document.body.appendChild(toast);
+    }
+    toast.style.background = isError ? "#dc2626" : "#0f172a";
+    toast.style.color = "#ffffff";
+    toast.textContent = message;
+    toast.style.opacity = "1";
+    clearTimeout(toast._hideTimer);
+    toast._hideTimer = setTimeout(() => { toast.style.opacity = "0"; }, 3500);
+  }
+
+  // Initialize Date Selectors
+  const monthSel = document.getElementById("monthSelect");
+  const yearSel = document.getElementById("yearSelect");
+  MONTHS.forEach((m, idx) => {
+    const opt = document.createElement("option");
+    opt.value = idx; opt.textContent = m;
+    if (idx === selectedMonth) opt.selected = true;
+    monthSel.appendChild(opt);
+  });
+  [2026, 2027, 2028].forEach(y => {
+    const opt = document.createElement("option");
+    opt.value = y; opt.textContent = y;
+    if (y === selectedYear) opt.selected = true;
+    yearSel.appendChild(opt);
+  });
+
+  monthSel.addEventListener("change", () => { selectedMonth = +monthSel.value; renderAll(); recordReadReceipt(); });
+  yearSel.addEventListener("change", () => { selectedYear = +yearSel.value; renderAll(); recordReadReceipt(); });
+
+  // Login Handler
+  document.getElementById("btnDoLogin").addEventListener("click", async () => {
+    const rawUser = document.getElementById("loginUsername").value.trim().toLowerCase();
+    const pass = document.getElementById("loginPassword").value;
+    const errEl = document.getElementById("loginError");
+    errEl.textContent = "";
+
+    if (!rawUser || !pass) { errEl.textContent = "Please enter username and password."; return; }
+    const email = rawUser.includes("@") ? rawUser : `${rawUser}${DOMAIN_SUFFIX}`;
+
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (err) {
+      errEl.textContent = "Invalid credentials or unauthorized account.";
+    }
+  });
+
+  document.getElementById("loginPassword").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("btnDoLogin").click();
+  });
+
+  window.handleSignOut = async () => {
+    await signOut(auth);
+  };
+
+  // Change Password Logic
+  window.openChangePassModal = () => {
+    document.getElementById("curPasswordInput").value = "";
+    document.getElementById("newPasswordInput").value = "";
+    document.getElementById("confirmPasswordInput").value = "";
+    document.getElementById("passChangeMsg").textContent = "";
+    document.getElementById("changePassModal").style.display = "flex";
+  };
+
+  window.submitPasswordChange = async () => {
+    const curPass = document.getElementById("curPasswordInput").value;
+    const newPass = document.getElementById("newPasswordInput").value;
+    const confPass = document.getElementById("confirmPasswordInput").value;
+    const msgEl = document.getElementById("passChangeMsg");
+
+    if (!curPass || !newPass) { msgEl.style.color = "#dc2626"; msgEl.textContent = "Please fill all fields."; return; }
+    if (newPass.length < 6) { msgEl.style.color = "#dc2626"; msgEl.textContent = "New password must be at least 6 characters."; return; }
+    if (newPass !== confPass) { msgEl.style.color = "#dc2626"; msgEl.textContent = "New passwords do not match."; return; }
+
+    try {
+      const cred = EmailAuthProvider.credential(currentUser.email, curPass);
+      await reauthenticateWithCredential(currentUser, cred);
+      await updatePassword(currentUser, newPass);
+      msgEl.style.color = "#15803d";
+      msgEl.textContent = "✅ Password updated successfully!";
+      setTimeout(() => closeModal("changePassModal"), 1200);
+    } catch (err) {
+      msgEl.style.color = "#dc2626";
+      msgEl.textContent = "❌ Current password is incorrect or session expired.";
+    }
+  };
+
+  // Auth State Observer
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      document.getElementById("loginGate").style.display = "flex";
+      document.getElementById("appContainer").style.display = "none";
+      return;
+    }
+
+    currentUser = user;
+    currentUsername = (user.email || "").split("@")[0].toLowerCase();
+    isAdmin = ADMIN_USERS.includes(currentUsername);
+    viewingDraft = isAdmin;
+
+    document.getElementById("loginGate").style.display = "none";
+    document.getElementById("appContainer").style.display = "block";
+    document.getElementById("loggedUserDisplay").textContent = `Logged in as: ${currentUsername} (${isAdmin ? "Supervisor" : "Staff"})`;
+
+    const roleBadge = document.getElementById("roleBadge");
+    if (isAdmin) {
+      roleBadge.textContent = "Supervisor (Admin)";
+      roleBadge.className = "badge-role role-admin";
+      document.getElementById("adminToolbar").style.display = "flex";
+      document.getElementById("paletteBar").style.display = "block";
+      document.getElementById("btnViewerSignOut").style.display = "none";
+      applySavedToolbarOrder();
+      initToolbarDragAndDrop();
+    } else {
+      roleBadge.textContent = "Staff (View Only)";
+      roleBadge.className = "badge-role role-viewer";
+      document.getElementById("adminToolbar").style.display = "none";
+      document.getElementById("paletteBar").style.display = "none";
+      document.getElementById("btnViewerSignOut").style.display = "inline-flex";
+    }
+
+    listenToDatabase();
+  });
+
+  function listenToDatabase() {
+    const pubRef = ref(db, "monthly_roster_occ_thc/published");
+    const draftRef = ref(db, "monthly_roster_occ_thc/draft");
+
+    onValue(pubRef, (snap) => {
+      publishedSnapshot = snap.val() || createInitialStructure();
+      if (!isAdmin || !viewingDraft) {
+        state = structuredClone(publishedSnapshot);
+        normalizeState();
+        renderAll();
+      }
+      if (!isAdmin) recordReadReceipt();
+    });
+
+    if (isAdmin) {
+      onValue(draftRef, (snap) => {
+        draftSnapshot = snap.val() || structuredClone(publishedSnapshot || createInitialStructure());
+        if (viewingDraft) {
+          state = structuredClone(draftSnapshot);
+          normalizeState();
+          renderAll();
+        }
+      });
+    }
+  }
+
+  function createInitialStructure() {
+    return {
+      employees: [
+        { id: "1", name: "Employee 1", username: "" },
+        { id: "2", name: "Employee 2", username: "" }
+      ],
+      shiftCodes: structuredClone(DEFAULT_CODES),
+      monthsData: {},
+      separationRules: []
+    };
+  }
+
+  function normalizeState() {
+    if (!state.employees) state.employees = [];
+    if (!state.shiftCodes) state.shiftCodes = structuredClone(DEFAULT_CODES);
+    if (!state.monthsData) state.monthsData = {};
+    if (!state.separationRules) state.separationRules = [];
+  }
+
+  function getMonthKey(y = selectedYear, m = selectedMonth) {
+    return `${y}-${String(m + 1).padStart(2, "0")}`;
+  }
+
+  function getMonthObj(key = getMonthKey()) {
+    if (!state.monthsData[key]) {
+      state.monthsData[key] = {
+        cells: {}, synced: {}, overrides: {}, locked: false,
+        version: 1, updatedBy: "", updatedAt: ""
+      };
+    }
+    const obj = state.monthsData[key];
+    if (!obj.cells) obj.cells = {};
+    if (!obj.synced) obj.synced = {};
+    if (!obj.overrides) obj.overrides = {};
+    return obj;
+  }
+
+  async function saveDraft(auditSummary) {
+    if (!isAdmin || !viewingDraft) return;
+    const mObj = getMonthObj();
+    mObj.updatedBy = currentUsername;
+    mObj.updatedAt = new Date().toLocaleString("en-GB");
+
+    await set(ref(db, "monthly_roster_occ_thc/draft"), state);
+    if (auditSummary) {
+      await logAudit(auditSummary);
+    }
+  }
+
+  window.publishDraft = async () => {
+    if (!isAdmin) return;
+    if (!viewingDraft) {
+      showToast("Switch to Draft mode first to publish changes.", true);
+      return;
+    }
+    const mKey = getMonthKey();
+    const mObj = getMonthObj(mKey);
+    const pubVer = (publishedSnapshot?.monthsData?.[mKey]?.version) || 0;
+    mObj.version = pubVer + 1;
+    mObj.updatedBy = currentUsername;
+    mObj.updatedAt = new Date().toLocaleString("en-GB");
+
+    await set(ref(db, "monthly_roster_occ_thc/draft"), state);
+    await set(ref(db, "monthly_roster_occ_thc/published"), state);
+    await logAudit(`Published & Approved ${MONTHS[selectedMonth]}-${String(selectedYear).slice(-2)} as V${mObj.version}`);
+    showToast(`✅ Published successfully as ${MONTHS[selectedMonth]}-${String(selectedYear).slice(-2)} / V${mObj.version}`);
+  };
+
+  window.toggleDraftPublishedView = () => {
+    if (!isAdmin) return;
+    viewingDraft = !viewingDraft;
+    state = structuredClone(viewingDraft ? draftSnapshot : publishedSnapshot);
+    normalizeState();
+    renderAll();
+  };
+
+  // Record Staff Read Receipt (Kept for 40 days)
+  async function recordReadReceipt() {
+    if (!currentUsername) return;
+    const mKey = getMonthKey();
+    const mObj = getMonthObj(mKey);
+    const ver = mObj.version || 1;
+    const now = Date.now();
+    const receiptId = `${currentUsername}_${mKey}_V${ver}`;
+
+    await set(ref(db, `monthly_roster_occ_thc/read_receipts/${receiptId}`), {
+      user: currentUsername,
+      monthKey: mKey,
+      monthLabel: `${MONTHS[selectedMonth]}-${String(selectedYear).slice(-2)}`,
+      version: ver,
+      timestamp: now,
+      timeFormatted: new Date(now).toLocaleString("en-GB")
+    });
+  }
+
+  window.openReceiptsModal = async () => {
+    const snap = await get(ref(db, "monthly_roster_occ_thc/read_receipts"));
+    const data = snap.val() || {};
+    const now = Date.now();
+    const validEntries = [];
+    const updates = {};
+
+    for (const [k, item] of Object.entries(data)) {
+      if (now - (item.timestamp || 0) > FORTY_DAYS_MS) {
+        updates[k] = null;
+      } else {
+        validEntries.push(item);
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      await update(ref(db, "monthly_roster_occ_thc/read_receipts"), updates);
+    }
+
+    const mKey = getMonthKey();
+    const ver = (publishedSnapshot?.monthsData?.[mKey]?.version) || 1;
+    const seenMap = new Map();
+    validEntries
+      .filter(e => e.monthKey === mKey && e.version === ver)
+      .forEach(e => seenMap.set(e.user.toLowerCase(), e.timeFormatted));
+
+    const summaryEl = document.getElementById("currentVersionReceiptSummary");
+    let html = `<strong>Current Official Version (${MONTHS[selectedMonth]}-${String(selectedYear).slice(-2)} / V${ver}):</strong><div style="margin-top:8px;">`;
+    state.employees.forEach(emp => {
+      const linkedUser = (emp.username || "").toLowerCase().trim();
+      const dispName = emp.name.toLowerCase().trim();
+      const seenTime = (linkedUser && seenMap.get(linkedUser))
+        || seenMap.get(dispName)
+        || [...seenMap.entries()].find(([u]) => dispName.includes(u) || u.includes(dispName))?.[1];
+
+      const tag = emp.username ? ` <span style="color:#64748b; font-size:11.5px;">(@${emp.username})</span>` : "";
+      if (seenTime) {
+        html += `<div class="list-item" style="background:#dcfce7; border-color:#22c55e;"><span>✅ <strong>${emp.name}</strong>${tag}</span><span>Viewed: ${seenTime}</span></div>`;
+      } else {
+        html += `<div class="list-item" style="background:#fef2f2; border-color:#ef4444;"><span>⏳ <strong>${emp.name}</strong>${tag}</span><span style="color:#dc2626; font-weight:800;">Not Viewed Yet</span></div>`;
+      }
+    });
+    html += `</div>`;
+    summaryEl.innerHTML = html;
+
+    const histEl = document.getElementById("receiptsHistoryList");
+    validEntries.sort((a, b) => b.timestamp - a.timestamp);
+    histEl.innerHTML = validEntries.length
+      ? validEntries.map(e => `<div class="list-item"><span><strong>${e.user}</strong> — ${e.monthLabel} (V${e.version})</span><span>${e.timeFormatted}</span></div>`).join("")
+      : "<p style='font-size:13px; color:#64748b;'>No view logs recorded in the last 40 days.</p>";
+
+    document.getElementById("receiptsModal").style.display = "flex";
+  };
+
+  async function logAudit(actionText) {
+    const id = Date.now();
+    await set(ref(db, `monthly_roster_occ_thc/audit_log/${id}`), {
+      user: currentUsername,
+      action: actionText,
+      time: new Date().toLocaleString("en-GB"),
+      timestamp: id
+    });
+  }
+
+  window.openAuditModal = async () => {
+    const snap = await get(ref(db, "monthly_roster_occ_thc/audit_log"));
+    const items = Object.values(snap.val() || {}).sort((a, b) => b.timestamp - a.timestamp).slice(0, 50);
+    document.getElementById("auditLogList").innerHTML = items.length
+      ? items.map(i => `<div class="list-item"><span><strong>${i.user}:</strong> ${i.action}</span><span style="font-size:11.5px; color:#64748b;">${i.time}</span></div>`).join("")
+      : "<p>No audit records yet.</p>";
+    document.getElementById("auditModal").style.display = "flex";
+  };
+
+  function pushUndo() {
+    undoStack.push(JSON.stringify(state));
+    if (undoStack.length > 20) undoStack.shift();
+    redoStack = [];
+    updateUndoRedoBtns();
+  }
+
+  window.undoAction = async () => {
+    if (!undoStack.length) return;
+    redoStack.push(JSON.stringify(state));
+    state = JSON.parse(undoStack.pop());
+    updateUndoRedoBtns();
+    renderAll();
+    await saveDraft("Undo action");
+  };
+
+  window.redoAction = async () => {
+    if (!redoStack.length) return;
+    undoStack.push(JSON.stringify(state));
+    state = JSON.parse(redoStack.pop());
+    updateUndoRedoBtns();
+    renderAll();
+    await saveDraft("Redo action");
+  };
+
+  function updateUndoRedoBtns() {
+    document.getElementById("btnUndo").disabled = undoStack.length === 0;
+    document.getElementById("btnRedo").disabled = redoStack.length === 0;
+  }
+
+  document.addEventListener("keydown", e => {
+    if (!isAdmin || !viewingDraft) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undoAction(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") { e.preventDefault(); redoAction(); }
+  });
+
+  // Add / Edit / Delete Employee Modal
+  window.openEmpModal = (empId = null) => {
+    if (!isAdmin || !viewingDraft) {
+      showToast("Switch to Draft mode to add or edit employees.", true);
+      return;
+    }
+    const titleEl = document.getElementById("empModalTitle");
+    const idInput = document.getElementById("editEmpId");
+    const nameInput = document.getElementById("empDisplayName");
+    const userInput = document.getElementById("empLoginUsername");
+    const delBtn = document.getElementById("btnDeleteEmp");
+
+    if (empId) {
+      const emp = state.employees.find(e => e.id === empId);
+      if (!emp) return;
+      titleEl.textContent = "✏️ Edit Employee Details";
+      idInput.value = emp.id;
+      nameInput.value = emp.name || "";
+      userInput.value = emp.username || "";
+      delBtn.style.display = "inline-flex";
+    } else {
+      titleEl.textContent = "+ Add Employee";
+      idInput.value = "";
+      nameInput.value = "";
+      userInput.value = "";
+      delBtn.style.display = "none";
+    }
+    document.getElementById("empModal").style.display = "flex";
+  };
+
+  window.saveEmployeeModal = async () => {
+    const id = document.getElementById("editEmpId").value;
+    const name = document.getElementById("empDisplayName").value.trim();
+    const username = document.getElementById("empLoginUsername").value.trim().toLowerCase().replace(/@occ\.local$/, "");
+    if (!name) return;
+
+    pushUndo();
+    if (id) {
+      const emp = state.employees.find(e => e.id === id);
+      if (emp) {
+        emp.name = name;
+        emp.username = username;
+      }
+      closeModal("empModal");
+      renderAll();
+      await saveDraft(`Updated employee: ${name}${username ? ` (@${username})` : ""}`);
+    } else {
+      const nextId = String(Date.now()).slice(-6);
+      state.employees.push({ id: nextId, name, username });
+      closeModal("empModal");
+      renderAll();
+      await saveDraft(`Added employee: ${name}${username ? ` (@${username})` : ""}`);
+    }
+  };
+
+  window.deleteEmployeeFromModal = async () => {
+    const id = document.getElementById("editEmpId").value;
+    const emp = state.employees.find(e => e.id === id);
+    if (!emp) return;
+
+    pushUndo();
+    state.employees = state.employees.filter(e => e.id !== id);
+    compareFilterIds.delete(id);
+    closeModal("empModal");
+    renderAll();
+    await saveDraft(`Removed employee: ${emp.name}`);
+    showToast(`Removed employee: ${emp.name}`);
+  };
+
+  // Drag & Drop Staff Rows Reordering (By Position/Rank)
+  window.toggleArrangeStaffMode = () => {
+    if (!isAdmin || !viewingDraft) {
+      showToast("Switch to Draft mode to reorder staff positions.", true);
+      return;
+    }
+    arrangeStaffMode = !arrangeStaffMode;
+    const btn = document.getElementById("btnArrangeStaff");
+    btn.classList.toggle("btn-arrange", arrangeStaffMode);
+    btn.classList.toggle("active", arrangeStaffMode);
+    btn.textContent = arrangeStaffMode ? "✓ Done Staff Order" : "↕️ Arrange Staff";
+    renderTable();
+  };
+
+  function initStaffRowDragAndDrop() {
+    const tbody = document.getElementById("rosterBody");
+    let draggedRow = null;
+
+    tbody.querySelectorAll("tr.emp-row").forEach(row => {
+      row.addEventListener("dragstart", (e) => {
+        if (!arrangeStaffMode) { e.preventDefault(); return; }
+        draggedRow = row;
+        row.classList.add("row-dragging");
+      });
+
+      row.addEventListener("dragend", () => {
+        row.classList.remove("row-dragging");
+        tbody.querySelectorAll(".row-drag-over").forEach(r => r.classList.remove("row-drag-over"));
+      });
+
+      row.addEventListener("dragover", (e) => {
+        if (!arrangeStaffMode || !draggedRow || draggedRow === row) return;
+        e.preventDefault();
+        row.classList.add("row-drag-over");
+      });
+
+      row.addEventListener("dragleave", () => {
+        row.classList.remove("row-drag-over");
+      });
+
+      row.addEventListener("drop", async (e) => {
+        if (!arrangeStaffMode || !draggedRow || draggedRow === row) return;
+        e.preventDefault();
+        row.classList.remove("row-drag-over");
+
+        const fromId = draggedRow.dataset.empId;
+        const toId = row.dataset.empId;
+        const fromIdx = state.employees.findIndex(emp => emp.id === fromId);
+        const toIdx = state.employees.findIndex(emp => emp.id === toId);
+        if (fromIdx === -1 || toIdx === -1) return;
+
+        pushUndo();
+        const [movedEmp] = state.employees.splice(fromIdx, 1);
+        state.employees.splice(toIdx, 0, movedEmp);
+
+        renderAll();
+        await saveDraft(`Reordered staff position: moved ${movedEmp.name}`);
+      });
+    });
+  }
+
+  // Sync Leaves from 2027 Planner
+  window.openSyncModal = () => {
+    document.getElementById("syncStatusMsg").textContent = "";
+    document.getElementById("syncModal").style.display = "flex";
+  };
+
+  window.syncLeavesFromSource = async (sourceNode) => {
+    const statusEl = document.getElementById("syncStatusMsg");
+    statusEl.textContent = "⏳ Fetching approved leaves...";
+    try {
+      const snap = await get(ref(db, sourceNode));
+      const planner = snap.val();
+      if (!planner || !planner.employees || !planner.entries) {
+        statusEl.textContent = "⚠️ No planner records found in selected source.";
+        return;
+      }
+
+      pushUndo();
+      const mKey = getMonthKey();
+      const mObj = getMonthObj(mKey);
+      let syncedCount = 0;
+
+      const plannerEmps = Object.values(planner.employees);
+      state.employees.forEach(rEmp => {
+        const matched = plannerEmps.find(p =>
+          String(p.id) === String(rEmp.id) ||
+          (p.name && p.name.trim().toLowerCase() === rEmp.name.trim().toLowerCase())
+        );
+        if (!matched) return;
+
+        const empEntries = planner.entries[matched.id] || {};
+        Object.keys(empEntries).forEach(dateStr => {
+          if (dateStr.startsWith(mKey)) {
+            const day = parseInt(dateStr.split("-")[2], 10);
+            const cellKey = `${rEmp.id}_${day}`;
+            mObj.cells[cellKey] = "V";
+            mObj.synced[cellKey] = true;
+            syncedCount++;
+          }
+        });
+      });
+
+      renderAll();
+      await saveDraft(`Synced ${syncedCount} leave days from ${sourceNode} for ${mKey}`);
+      statusEl.style.color = "#15803d";
+      statusEl.textContent = `✅ Synced ${syncedCount} leave days successfully!`;
+    } catch (err) {
+      statusEl.style.color = "#dc2626";
+      statusEl.textContent = `❌ Sync failed: ${err.message}`;
+    }
+  };
+
+  function analyzeAlerts() {
+    const mKey = getMonthKey();
+    const mObj = getMonthObj(mKey);
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+
+    const prevDate = new Date(selectedYear, selectedMonth, 0);
+    const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+    const prevDays = prevDate.getDate();
+    const prevObj = state.monthsData[prevKey] || { cells: {} };
+
+    const alerts = [];
+    const cellFlags = {};
+
+    const ensureFlag = (ck) => {
+      if (!cellFlags[ck]) cellFlags[ck] = { fatigue: false, conflict: false, overridden: false };
+      return cellFlags[ck];
+    };
+
+    state.employees.forEach(emp => {
+      for (let d = 1; d <= daysInMonth; d++) {
+        const ck = `${emp.id}_${d}`;
+        if (mObj.cells[ck] !== "A") continue;
+
+        let restGap = 0;
+        let foundC = false;
+        for (let back = 1; back <= 3; back++) {
+          const checkDay = d - back;
+          let code = "";
+          if (checkDay >= 1) {
+            code = mObj.cells[`${emp.id}_${checkDay}`] || "";
+          } else {
+            code = prevObj.cells[`${emp.id}_${prevDays + checkDay}`] || "";
+          }
+          if (code === "C") { foundC = true; break; }
+          if (code === "") { restGap++; } else { break; }
+        }
+
+        if (foundC && restGap <= 2) {
+          const fl = ensureFlag(ck);
+          fl.fatigue = true;
+          fl.overridden = !!mObj.overrides[ck];
+          alerts.push({
+            cellKey: ck,
+            text: `${emp.name} — Day ${d}: C → A after ${restGap} rest day(s)`,
+            overridden: fl.overridden
+          });
+        }
+      }
+    });
+
+    (state.separationRules || []).forEach(rule => {
+      for (let d = 1; d <= daysInMonth; d++) {
+        const ck1 = `${rule.emp1}_${d}`;
+        const ck2 = `${rule.emp2}_${d}`;
+        const c1 = mObj.cells[ck1];
+        const c2 = mObj.cells[ck2];
+        if (c1 && c2 && c1 === c2) {
+          const ov = !!(mObj.overrides[ck1] || mObj.overrides[ck2]);
+          ensureFlag(ck1).conflict = true; ensureFlag(ck1).overridden = ov;
+          ensureFlag(ck2).conflict = true; ensureFlag(ck2).overridden = ov;
+          const e1Name = state.employees.find(e => e.id === rule.emp1)?.name || rule.emp1;
+          const e2Name = state.employees.find(e => e.id === rule.emp2)?.name || rule.emp2;
+          alerts.push({
+            cellKey: ck1,
+            cellKey2: ck2,
+            text: `Day ${d} (Shift ${c1}): ${e1Name} & ${e2Name} scheduled together`,
+            overridden: ov
+          });
+        }
+      }
+    });
+
+    return { alerts, cellFlags };
+  }
+
+  window.toggleOverride = async (ck1, ck2 = null) => {
+    if (!isAdmin || !viewingDraft) return;
+    pushUndo();
+    const mObj = getMonthObj();
+    const newVal = !mObj.overrides[ck1];
+    if (newVal) {
+      mObj.overrides[ck1] = true;
+      if (ck2) mObj.overrides[ck2] = true;
+    } else {
+      delete mObj.overrides[ck1];
+      if (ck2) delete mObj.overrides[ck2];
+    }
+    renderAll();
+    await saveDraft(`${newVal ? "Approved" : "Revoked"} alert override on ${ck1}`);
+    if (document.getElementById("rulesModal").style.display === "flex") openRulesModal();
+  };
+
+  window.openRulesModal = () => {
+    const sel1 = document.getElementById("ruleEmp1");
+    const sel2 = document.getElementById("ruleEmp2");
+    sel1.innerHTML = state.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join("");
+    sel2.innerHTML = state.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join("");
+
+    const rulesList = document.getElementById("separationRulesList");
+    rulesList.innerHTML = (state.separationRules || []).map((r, idx) => {
+      const n1 = state.employees.find(e => e.id === r.emp1)?.name || r.emp1;
+      const n2 = state.employees.find(e => e.id === r.emp2)?.name || r.emp2;
+      return `<div class="list-item"><span><strong>${n1}</strong> ≠ <strong>${n2}</strong></span><button class="tool-btn btn-danger" style="padding:3px 8px;" onclick="removeSeparationRule(${idx})">Remove</button></div>`;
+    }).join("") || "<p style='font-size:12px; color:#64748b;'>No separation rules configured.</p>";
+
+    const { alerts } = analyzeAlerts();
+    const alertsList = document.getElementById("activeAlertsList");
+    alertsList.innerHTML = alerts.map(a => `
+      <div class="list-item" style="background:${a.overridden ? '#dcfce7' : '#fef3c7'};">
+        <span>${a.overridden ? '✅ [Overridden]' : '⚠️'} ${a.text}</span>
+        <button class="tool-btn" style="padding:4px 8px;" onclick="toggleOverride('${a.cellKey}', ${a.cellKey2 ? `'${a.cellKey2}'` : 'null'})">
+          ${a.overridden ? 'Revoke Override' : 'Approve Override'}
+        </button>
+      </div>
+    `).join("") || "<p style='font-size:12px; color:#15803d;'>No active alerts for this month.</p>";
+
+    document.getElementById("rulesModal").style.display = "flex";
+  };
+
+  window.addSeparationRule = async () => {
+    const emp1 = document.getElementById("ruleEmp1").value;
+    const emp2 = document.getElementById("ruleEmp2").value;
+    if (!emp1 || !emp2 || emp1 === emp2) return;
+    pushUndo();
+    state.separationRules.push({ emp1, emp2 });
+    renderAll();
+    await saveDraft(`Added separation rule between ${emp1} and ${emp2}`);
+    openRulesModal();
+  };
+
+  window.removeSeparationRule = async (idx) => {
+    pushUndo();
+    state.separationRules.splice(idx, 1);
+    renderAll();
+    await saveDraft("Removed separation rule");
+    openRulesModal();
+  };
+
+  // Drag & Drop Toolbar Arrangement
+  const TOOLBAR_ORDER_KEY = "occ_roster_toolbar_order_v1";
+
+  function applySavedToolbarOrder() {
+    const saved = JSON.parse(localStorage.getItem(TOOLBAR_ORDER_KEY) || "null");
+    if (!saved || !Array.isArray(saved)) return;
+    const toolbar = document.getElementById("adminToolbar");
+    const anchor = document.getElementById("btnArrange");
+    saved.forEach(id => {
+      const btn = toolbar.querySelector(`[data-btn-id="${id}"]`);
+      if (btn) toolbar.insertBefore(btn, anchor);
+    });
+  }
+
+  function initToolbarDragAndDrop() {
+    const toolbar = document.getElementById("adminToolbar");
+    let draggedEl = null;
+
+    toolbar.querySelectorAll("[data-btn-id]").forEach(btn => {
+      btn.addEventListener("dragstart", (e) => {
+        if (!arrangeMode) { e.preventDefault(); return; }
+        draggedEl = btn;
+        btn.classList.add("dragging");
+      });
+
+      btn.addEventListener("dragend", () => {
+        btn.classList.remove("dragging");
+        toolbar.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
+        saveCurrentToolbarOrder();
+      });
+
+      btn.addEventListener("dragover", (e) => {
+        if (!arrangeMode || !draggedEl || draggedEl === btn) return;
+        e.preventDefault();
+        btn.classList.add("drag-over");
+      });
+
+      btn.addEventListener("dragleave", () => {
+        btn.classList.remove("drag-over");
+      });
+
+      btn.addEventListener("drop", (e) => {
+        if (!arrangeMode || !draggedEl || draggedEl === btn) return;
+        e.preventDefault();
+        btn.classList.remove("drag-over");
+        const rect = btn.getBoundingClientRect();
+        const after = (e.clientX - rect.left) > rect.width / 2;
+        toolbar.insertBefore(draggedEl, after ? btn.nextSibling : btn);
+        saveCurrentToolbarOrder();
+      });
+    });
+  }
+
+  function saveCurrentToolbarOrder() {
+    const toolbar = document.getElementById("adminToolbar");
+    const order = [...toolbar.querySelectorAll("[data-btn-id]")].map(b => b.dataset.btnId);
+    localStorage.setItem(TOOLBAR_ORDER_KEY, JSON.stringify(order));
+  }
+
+  window.toggleArrangeMode = () => {
+    arrangeMode = !arrangeMode;
+    const toolbar = document.getElementById("adminToolbar");
+    const btn = document.getElementById("btnArrange");
+    const resetBtn = document.getElementById("btnResetOrder");
+
+    toolbar.classList.toggle("arranging", arrangeMode);
+    btn.classList.toggle("active", arrangeMode);
+    btn.textContent = arrangeMode ? "✓ Done Arranging" : "⇄ Arrange Buttons";
+    resetBtn.style.display = arrangeMode ? "inline-flex" : "none";
+
+    toolbar.querySelectorAll("[data-btn-id]").forEach(b => {
+      b.setAttribute("draggable", arrangeMode ? "true" : "false");
+    });
+  };
+
+  window.resetToolbarOrder = () => {
+    localStorage.removeItem(TOOLBAR_ORDER_KEY);
+    location.reload();
+  };
+
+  // Render Palette, Filter Chips & Grid Table
+  function renderPalette() {
+    const container = document.getElementById("paletteItems");
+    container.innerHTML = "";
+    Object.entries(state.shiftCodes).forEach(([key, cfg]) => {
+      const chip = document.createElement("div");
+      chip.className = `brush-chip ${activeBrush === key ? "active" : ""}`;
+      chip.style.background = cfg.bg;
+      chip.style.color = cfg.text;
+      chip.innerHTML = `<span class="chip-code">${key === "ERASER" ? "⌫" : key}</span><span>${cfg.label}</span>`;
+      chip.onclick = () => { activeBrush = key; renderPalette(); };
+      container.appendChild(chip);
+    });
+  }
+
+  function renderFilterChips() {
+    const container = document.getElementById("filterChips");
+    container.innerHTML = state.employees.map(emp => `
+      <span class="filter-chip ${compareFilterIds.has(emp.id) ? "selected" : ""}" onclick="toggleCompareEmp('${emp.id}')">
+        ${emp.name}
+      </span>
+    `).join("");
+  }
+
+  window.toggleCompareEmp = (id) => {
+    if (compareFilterIds.has(id)) compareFilterIds.delete(id);
+    else compareFilterIds.add(id);
+    renderFilterChips();
+    renderTable();
+  };
+
+  window.clearCompareFilter = () => {
+    compareFilterIds.clear();
+    renderFilterChips();
+    renderTable();
+  };
+
+  function renderTable() {
+    const mKey = getMonthKey();
+    const mObj = getMonthObj(mKey);
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const { cellFlags } = analyzeAlerts();
+
+    const banner = document.getElementById("modeBanner");
+    if (isAdmin && viewingDraft) {
+      banner.textContent = "🟡 Draft Mode (Not Visible to Staff Until Published)";
+      banner.className = "status-banner status-draft";
+      document.getElementById("btnToggleView").textContent = "👁️ View Published";
+    } else {
+      banner.textContent = "🟢 Published Official Version";
+      banner.className = "status-banner status-published";
+      if (isAdmin) document.getElementById("btnToggleView").textContent = "✏️ Back to Draft";
+    }
+
+    document.getElementById("versionTag").textContent = `V${mObj.version || 1}`;
+    document.getElementById("btnLockMonth").textContent = mObj.locked ? "🔒 Unlock Month" : "🔓 Lock Month";
+    document.getElementById("lastUpdatedDisplay").textContent = mObj.updatedAt
+      ? `Last Updated: ${mObj.updatedAt} by ${mObj.updatedBy}`
+      : "Last Updated: —";
+
+    const dayLetters = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    let headHtml = `<tr><th class="emp-col" rowspan="2">Employee</th>`;
+    let subHeadHtml = `<tr class="day-names">`;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dow = new Date(selectedYear, selectedMonth, d).getDay();
+      const isWknd = (dow === 5 || dow === 6);
+      headHtml += `<th class="${isWknd ? "weekend" : ""}">${d}</th>`;
+      subHeadHtml += `<th class="${isWknd ? "weekend" : ""}">${dayLetters[dow]}</th>`;
+    }
+    headHtml += `</tr>` + subHeadHtml + `</tr>`;
+    document.getElementById("rosterHead").innerHTML = headHtml;
+
+    const visibleEmps = compareFilterIds.size > 0
+      ? state.employees.filter(e => compareFilterIds.has(e.id))
+      : state.employees;
+
+    let bodyHtml = "";
+    visibleEmps.forEach(emp => {
+      const canEditRow = isAdmin && viewingDraft;
+      const dragAttr = (canEditRow && arrangeStaffMode) ? `draggable="true"` : "";
+      const handleHtml = (canEditRow && arrangeStaffMode) ? `<span class="drag-handle" title="Drag row to reorder">☰</span>` : "";
+      const editBtnHtml = canEditRow ? `<button class="emp-edit-btn" onclick="openEmpModal('${emp.id}')" title="Edit Name / Username">✎</button>` : "";
+
+      bodyHtml += `<tr class="emp-row" data-emp-id="${emp.id}" ${dragAttr}>`;
+      bodyHtml += `<td class="emp-col"><div class="emp-cell-flex"><div class="emp-name-wrap">${handleHtml}<span>${emp.name}</span></div>${editBtnHtml}</div></td>`;
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dow = new Date(selectedYear, selectedMonth, d).getDay();
+        const isWknd = (dow === 5 || dow === 6);
+        const ck = `${emp.id}_${d}`;
+        const code = mObj.cells[ck] || "";
+        const cfg = state.shiftCodes[code];
+        const isSynced = !!mObj.synced[ck];
+        const fl = cellFlags[ck];
+
+        const bg = cfg ? cfg.bg : (isWknd ? "#f1f5f9" : "#ffffff");
+        const color = cfg ? cfg.text : "#0f172a";
+
+        let badges = "";
+        if (isSynced && code === "V") badges += `<span class="synced-badge">⇄</span>`;
+        if (fl && (fl.fatigue || fl.conflict)) {
+          badges += fl.overridden
+            ? `<span class="override-ok">✔</span>`
+            : `<span class="warn-triangle">▲</span>`;
+        }
+
+        const cls = [
+          "shift-cell",
+          isWknd ? "weekend" : "",
+          (isSynced && code === "V") ? "synced-leave" : "",
+          (fl && (fl.fatigue || fl.conflict) && !fl.overridden) ? "conflict-ring" : ""
+        ].join(" ");
+
+        bodyHtml += `<td class="${cls}" style="background:${bg}; color:${color};" data-emp="${emp.id}" data-day="${d}">${code}${badges}</td>`;
+      }
+      bodyHtml += `</tr>`;
+    });
+
+    ["A", "B", "C"].forEach((shiftCode, idx) => {
+      const cfg = state.shiftCodes[shiftCode];
+      bodyHtml += `<tr class="summary-row ${idx === 0 ? "summary-divider" : ""}">`;
+      bodyHtml += `<td class="emp-col" style="background:${cfg.bg}; color:${cfg.text};">Shift ${shiftCode} Count</td>`;
+      for (let d = 1; d <= daysInMonth; d++) {
+        let count = 0;
+        state.employees.forEach(emp => {
+          if (mObj.cells[`${emp.id}_${d}`] === shiftCode) count++;
+        });
+        bodyHtml += `<td class="${count === 0 ? "zero-alert" : ""}">${count}</td>`;
+      }
+      bodyHtml += `</tr>`;
+    });
+
+    document.getElementById("rosterBody").innerHTML = bodyHtml;
+    attachCellListeners();
+    if (isAdmin && viewingDraft && arrangeStaffMode) {
+      initStaffRowDragAndDrop();
+    }
+  }
+
+  function attachCellListeners() {
+    document.querySelectorAll(".shift-cell").forEach(cell => {
+      cell.addEventListener("mousedown", (e) => {
+        if (!isAdmin || !viewingDraft || arrangeStaffMode) return;
+        const empId = cell.dataset.emp;
+        const day = cell.dataset.day;
+        const ck = `${empId}_${day}`;
+        if (e.altKey) { toggleOverride(ck); return; }
+        isMouseDown = true;
+        pushUndo();
+        paintCell(empId, day);
+      });
+
+      cell.addEventListener("mouseenter", () => {
+        if (isMouseDown && isAdmin && viewingDraft && !arrangeStaffMode) {
+          paintCell(cell.dataset.emp, cell.dataset.day);
+        }
+      });
+    });
+  }
+
+  document.addEventListener("mouseup", async () => {
+    if (isMouseDown) {
+      isMouseDown = false;
+      await saveDraft(`Edited shift cells in ${getMonthKey()}`);
+    }
+  });
+
+  function paintCell(empId, day) {
+    const mObj = getMonthObj();
+    if (mObj.locked) return;
+    const ck = `${empId}_${day}`;
+    if (activeBrush === "ERASER") {
+      delete mObj.cells[ck];
+      delete mObj.synced[ck];
+      delete mObj.overrides[ck];
+    } else {
+      mObj.cells[ck] = activeBrush;
+      delete mObj.synced[ck];
+    }
+    renderTable();
+  }
+
+  // Additional Admin Helpers
+  window.openAddCodeModal = () => { document.getElementById("addCodeModal").style.display = "flex"; };
+
+  window.saveNewShiftCode = async () => {
+    const key = document.getElementById("newCodeKey").value.trim().toUpperCase();
+    const label = document.getElementById("newCodeLabel").value.trim();
+    const bg = document.getElementById("newCodeBg").value;
+    const text = document.getElementById("newCodeText").value;
+    if (!key || !label) return;
+    pushUndo();
+    state.shiftCodes[key] = { label, bg, text, isWork: true };
+    closeModal("addCodeModal");
+    renderAll();
+    await saveDraft(`Added shift code: ${key} (${label})`);
+  };
+
+  window.copyPreviousMonth = async () => {
+    const prevDate = new Date(selectedYear, selectedMonth, 0);
+    const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+    const prevObj = state.monthsData[prevKey];
+    if (!prevObj) { showToast("No data found in previous month.", true); return; }
+    pushUndo();
+    const curObj = getMonthObj();
+    curObj.cells = structuredClone(prevObj.cells || {});
+    curObj.synced = {};
+    curObj.overrides = {};
+    renderAll();
+    await saveDraft(`Copied shifts from ${prevKey} to ${getMonthKey()}`);
+    showToast(`Copied shifts from ${prevKey}`);
+  };
+
+  window.toggleMonthLock = async () => {
+    pushUndo();
+    const mObj = getMonthObj();
+    mObj.locked = !mObj.locked;
+    renderAll();
+    await saveDraft(`${mObj.locked ? "Locked" : "Unlocked"} ${getMonthKey()}`);
+  };
+
+  window.clearMonthData = async () => {
+    pushUndo();
+    const mObj = getMonthObj();
+    mObj.cells = {}; mObj.synced = {}; mObj.overrides = {};
+    renderAll();
+    await saveDraft(`Cleared draft data for ${getMonthKey()}`);
+    showToast(`Cleared draft data for ${getMonthKey()}`);
+  };
+
+  window.exportCSV = () => {
+    const mKey = getMonthKey();
+    const mObj = getMonthObj(mKey);
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    let csv = "Employee," + Array.from({ length: daysInMonth }, (_, i) => i + 1).join(",") + "\n";
+    state.employees.forEach(emp => {
+      const row = [emp.name];
+      for (let d = 1; d <= daysInMonth; d++) row.push(mObj.cells[`${emp.id}_${d}`] || "");
+      csv += row.join(",") + "\n";
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `OCC_Roster_${mKey}_V${mObj.version || 1}.csv`;
+    a.click();
+  };
+
+  window.closeModal = (id) => { document.getElementById(id).style.display = "none"; };
+
+  function renderAll() {
+    renderPalette();
+    renderFilterChips();
+    renderTable();
+  }
+</script>
+</body>
+</html>
