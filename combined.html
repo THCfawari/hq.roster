@@ -376,10 +376,9 @@
   </div>
 
   <script>
-    // ضع مفتاح apiKey الحقيقي الموجود في ملف index.html المستقر لديك
     const firebaseConfig = {
       databaseURL: "https://leave-2027-default-rtdb.firebaseio.com",
-      apiKey: "AIzaSyA731dlhUgqoMGG7J_GUBn_H7vxvEPchms",
+      apiKey: "PUT_YOUR_REAL_FIREBASE_API_KEY_HERE",
       authDomain: "leave-2027.firebaseapp.com",
       projectId: "leave-2027"
     };
@@ -408,8 +407,9 @@
     const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const DAY_NAMES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 
-    let selectedMonth = new Date().getMonth();
-    let selectedYear = new Date().getFullYear();
+    // يفتح افتراضياً على ديسمبر 2026 ويمكن تغييره لأي شهر
+    let selectedMonth = 11; 
+    let selectedYear = 2026;
     let combinedData = {
       hq: { version: "V1", staffList: [] },
       ems: { version: "V1", staffList: [] }
@@ -492,87 +492,85 @@
       loadCombinedData();
     });
 
-    function getCandidateMonthKeys() {
-      const m1 = String(selectedMonth + 1).padStart(2, "0"); // "12" (1-based padded)
-      const m0 = String(selectedMonth); // "11" (0-based)
-      const mShort = MONTHS[selectedMonth]; // "Dec"
-      return [
-        `${selectedYear}-${m1}`,
-        `${selectedYear}_${m1}`,
-        `${selectedYear}-${selectedMonth + 1}`,
-        `${selectedYear}_${selectedMonth + 1}`,
-        `${selectedYear}-${m0}`,
-        `${selectedYear}_${m0}`,
-        `${mShort}-${selectedYear}`,
-        `${mShort}_${selectedYear}`
-      ];
+    function getMonthKey() {
+      return `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
     }
 
-    function normalizeRosterNode(pubRootObj) {
-      if (!pubRootObj || typeof pubRootObj !== "object") {
-        return { version: "-", staffList: [], availableKeys: [] };
-      }
-      const availableKeys = Object.keys(pubRootObj);
-      const candidates = getCandidateMonthKeys();
-      let node = null;
-      for (const k of candidates) {
-        if (pubRootObj[k]) {
-          node = pubRootObj[k];
-          break;
-        }
-      }
-      if (!node) {
-        return { version: "-", staffList: [], availableKeys };
+    function parsePublishedTree(pubObj, monthKey) {
+      if (!pubObj || typeof pubObj !== "object") {
+        return { version: "-", staffList: [], availableMonths: [] };
       }
 
-      const rawStaff = Array.isArray(node.staff) ? node.staff : (node.staff ? Object.values(node.staff) : []);
-      const globalAssign = node.assignments || node.shifts || node.roster || node.data || {};
+      // 1. استخراج قائمة الموظفين من published/employees
+      const rawEmployees = pubObj.employees || pubObj.staff || [];
+      const empEntries = Array.isArray(rawEmployees)
+        ? rawEmployees.map((emp, idx) => [emp && emp.id ? emp.id : String(idx), emp])
+        : Object.entries(rawEmployees);
 
-      const staffList = rawStaff.map((person, idx) => {
-        if (typeof person === "string") {
-          const perDays = globalAssign[person] || globalAssign[idx] || {};
-          return { name: person, days: perDays };
-        }
-        const pid = person.id || person.key || person.username || person.name || String(idx);
-        const perDays =
-          person.shifts ||
-          person.assignments ||
-          person.days ||
-          globalAssign[pid] ||
-          globalAssign[person.name] ||
-          globalAssign[idx] ||
-          {};
-        return {
-          name: person.name || person.fullName || pid,
-          days: perDays
-        };
-      });
+      // 2. استخراج بيانات الشهر من published/months/YYYY-MM
+      const monthsNode = pubObj.months || {};
+      const availableMonths = Object.keys(monthsNode);
+      const monthData = monthsNode[monthKey];
+
+      if (!monthData) {
+        return { version: "-", staffList: [], availableMonths };
+      }
+
+      const assignments = monthData.assignments || {};
+      const overrides = monthData.overrides || {};
+
+      const staffList = empEntries
+        .filter(([, emp]) => emp !== null && emp !== undefined)
+        .map(([keyId, emp], idx) => {
+          const isObj = typeof emp === "object";
+          const empName = isObj ? (emp.name || emp.fullName || keyId) : String(emp);
+          const empId = isObj && emp.id ? emp.id : keyId;
+
+          const baseDays =
+            assignments[empId] ||
+            assignments[empName] ||
+            assignments[idx] ||
+            {};
+          const overDays =
+            overrides[empId] ||
+            overrides[empName] ||
+            overrides[idx] ||
+            {};
+
+          return {
+            name: empName,
+            baseDays,
+            overDays
+          };
+        });
 
       return {
-        version: node.version || node.ver || "V1",
+        version: monthData.version || "V1",
         staffList,
-        availableKeys
+        availableMonths
       };
     }
 
     async function loadCombinedData() {
+      const monthKey = getMonthKey();
       document.getElementById("statusInfo").textContent = "Loading...";
+
       const [hqSnap, emsSnap] = await Promise.all([
         db.ref(`${HQ_DB_ROOT}/published`).once("value"),
         db.ref(`${EMS_DB_ROOT}/published`).once("value")
       ]);
 
-      const hqNorm = normalizeRosterNode(hqSnap.val());
-      const emsNorm = normalizeRosterNode(emsSnap.val());
+      const hqParsed = parsePublishedTree(hqSnap.val(), monthKey);
+      const emsParsed = parsePublishedTree(emsSnap.val(), monthKey);
 
-      combinedData = { hq: hqNorm, ems: emsNorm };
+      combinedData = { hq: hqParsed, ems: emsParsed };
 
-      let infoMsg = `HQ: ${hqNorm.staffList.length} staff | EMS: ${emsNorm.staffList.length} staff`;
-      if (hqNorm.staffList.length === 0 && hqNorm.availableKeys.length > 0) {
-        infoMsg += ` (Available HQ months: ${hqNorm.availableKeys.join(", ")})`;
+      let infoMsg = `HQ: ${hqParsed.staffList.length} staff (${hqParsed.version}) | EMS: ${emsParsed.staffList.length} staff (${emsParsed.version})`;
+      if (hqParsed.staffList.length === 0 && hqParsed.availableMonths.length > 0) {
+        infoMsg += ` [HQ Months: ${hqParsed.availableMonths.join(", ")}]`;
       }
-      if (emsNorm.staffList.length === 0 && emsNorm.availableKeys.length > 0) {
-        infoMsg += ` (Available EMS months: ${emsNorm.availableKeys.join(", ")})`;
+      if (emsParsed.staffList.length === 0 && emsParsed.availableMonths.length > 0) {
+        infoMsg += ` [EMS Months: ${emsParsed.availableMonths.join(", ")}]`;
       }
       document.getElementById("statusInfo").textContent = infoMsg;
 
@@ -594,12 +592,26 @@
       return days;
     }
 
-    function getShiftForDay(daysObj, dayNum) {
-      if (!daysObj) return "";
-      if (Array.isArray(daysObj)) {
-        return daysObj[dayNum] || daysObj[dayNum - 1] || "";
+    function readDayCode(container, dayNum) {
+      if (!container) return "";
+      const pad2 = String(dayNum).padStart(2, "0");
+      const fullDate = `${getMonthKey()}-${pad2}`;
+      let val = "";
+      if (Array.isArray(container)) {
+        val = container[dayNum] ?? container[dayNum - 1] ?? "";
+      } else {
+        val = container[dayNum] ?? container[String(dayNum)] ?? container[pad2] ?? container[fullDate] ?? "";
       }
-      return daysObj[dayNum] || daysObj[String(dayNum)] || daysObj[String(dayNum).padStart(2, "0")] || "";
+      if (val && typeof val === "object") {
+        val = val.code || val.shift || val.value || "";
+      }
+      return String(val || "").trim();
+    }
+
+    function getFinalShift(person, dayNum) {
+      const ov = readDayCode(person.overDays, dayNum);
+      if (ov) return ov;
+      return readDayCode(person.baseDays, dayNum);
     }
 
     function renderRoster() {
@@ -633,7 +645,7 @@
       combinedData.hq.staffList.forEach(person => {
         bodyHTML += `<tr><td class="staff-name-cell">${person.name}</td>`;
         days.forEach(d => {
-          const code = getShiftForDay(person.days, d.day);
+          const code = getFinalShift(person, d.day);
           if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
           if (code === "A") shiftCounts.A[d.day]++;
           if (code === "B") shiftCounts.B[d.day]++;
@@ -650,7 +662,7 @@
       combinedData.ems.staffList.forEach(person => {
         bodyHTML += `<tr><td class="staff-name-cell">${person.name}</td>`;
         days.forEach(d => {
-          const code = getShiftForDay(person.days, d.day);
+          const code = getFinalShift(person, d.day);
           if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
           if (code === "A") shiftCounts.A[d.day]++;
           if (code === "B") shiftCounts.B[d.day]++;
@@ -685,17 +697,17 @@
       const days = getDaysInMonth(selectedYear, selectedMonth);
       let csv = `Team,Staff,${days.map(d => d.day).join(",")}\n`;
       combinedData.hq.staffList.forEach(p => {
-        const row = days.map(d => getShiftForDay(p.days, d.day));
+        const row = days.map(d => getFinalShift(p, d.day));
         csv += `HQ,"${p.name}",${row.join(",")}\n`;
       });
       combinedData.ems.staffList.forEach(p => {
-        const row = days.map(d => getShiftForDay(p.days, d.day));
+        const row = days.map(d => getFinalShift(p, d.day));
         csv += `EMS,"${p.name}",${row.join(",")}\n`;
       });
       const blob = new Blob([csv], { type: "text/csv" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `THC_OCC_Combined_${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}.csv`;
+      a.download = `THC_OCC_Combined_${getMonthKey()}.csv`;
       a.click();
     });
   </script>
