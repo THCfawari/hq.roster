@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THC / OCC - Combined Master Roster (HQ + EMS)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    .roster-wrapper {
+      display: inline-flex;
+      align-items: stretch;
+      background: #ffffff;
+      border: 2.5px solid #000000;
+    }
+
+    table.roster-table {
+      border-collapse: collapse;
+      background: #ffffff;
+      font-size: 11px;
+      line-height: 1.15;
+    }
+
+    table.roster-table th,
+    table.roster-table td {
+      border: 1px solid #000000;
+      text-align: center;
+      vertical-align: middle;
+      padding: 0;
+      user-select: none;
+    }
+
+    .thc-title-cell {
+      background-color: #b4d5c0;
+      font-weight: 800;
+      font-size: 13px;
+      color: #000000;
+      min-width: 175px;
+      width: 175px;
+      height: 28px;
+      border-right: 2.5px solid #000000 !important;
+      border-bottom: 2px solid #000000 !important;
+    }
+
+    .month-ver-cell {
+      background-color: #ffffff;
+      font-weight: 800;
+      font-size: 11.5px;
+      color: #1d4ed8;
+      height: 24px;
+      border-right: 2.5px solid #000000 !important;
+      border-bottom: 2.5px solid #000000 !important;
+    }
+
+    .day-num-cell {
+      background-color: #7ab3d1;
+      font-weight: 800;
+      font-size: 11px;
+      color: #000000;
+      width: 28px;
+      min-width: 28px;
+      height: 28px;
+      border-bottom: 1.5px solid #000000 !important;
+    }
+
+    .day-name-cell {
+      background-color: #ffffff;
+      font-weight: 700;
+      font-size: 10px;
+      color: #000000;
+      width: 28px;
+      min-width: 28px;
+      height: 24px;
+      border-bottom: 2.5px solid #000000 !important;
+    }
+
+    .wknd-hdr {
+      background-color: #e2e8f0 !important;
+    }
+
+    .staff-name-cell {
+      text-align: left !important;
+      padding: 0 6px !important;
+      font-weight: 700;
+      font-size: 11.5px;
+      color: #000000;
+      height: 25px;
+      white-space: nowrap;
+      border-right: 2.5px solid #000000 !important;
+      background-color: #ffffff;
+    }
+
+    .team-divider-row td {
+      background-color: #dbeafe !important;
+      color: #1e3a8a !important;
+      font-weight: 800 !important;
+      font-size: 10.5px !important;
+      height: 22px !important;
+      letter-spacing: 0.6px;
+      border-top: 2px solid #000000 !important;
+      border-bottom: 2px solid #000000 !important;
+    }
+
+    .shift-cell {
+      width: 28px;
+      min-width: 28px;
+      height: 25px;
+      font-weight: 800;
+      font-size: 11px;
+    }
+
+    /* Summary Rows */
+    .total-active-label {
+      background-color: #9ec5ab;
+      font-weight: 800;
+      font-size: 11.5px;
+      color: #000000;
+      height: 25px;
+      border-top: 2.5px solid #000000 !important;
+      border-right: 2.5px solid #000000 !important;
+    }
+    .total-active-val {
+      background-color: #f3c6c6;
+      font-weight: 800;
+      font-size: 11px;
+      color: #991b1b;
+      height: 25px;
+      border-top: 2.5px solid #000000 !important;
+    }
+
+    .count-row-label {
+      font-weight: 800;
+      font-size: 11px;
+      color: #000000;
+      height: 24px;
+      border-right: 2.5px solid #000000 !important;
+    }
+    .count-row-val {
+      background-color: #ffffff;
+      font-weight: 800;
+      font-size: 11px;
+      color: #000000;
+      height: 24px;
+    }
+
+    /* Right Side Divider & Legend Panel */
+    .side-divider {
+      width: 12px;
+      min-width: 12px;
+      background-color: #808080;
+      border-left: 2.5px solid #000000;
+      border-right: 2.5px solid #000000;
+    }
+
+    .legend-panel {
+      display: flex;
+      flex-direction: column;
+      width: 185px;
+      min-width: 185px;
+      background-color: #ffffff;
+    }
+
+    .legend-top-blue {
+      height: 52px;
+      min-height: 52px;
+      background-color: #7ab3d1;
+      border-bottom: 2.5px solid #000000;
+    }
+
+    .legend-items-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .legend-row {
+      display: flex;
+      flex: 1;
+      min-height: 22px;
+      border-bottom: 1px solid #000000;
+    }
+    .legend-row:last-child {
+      border-bottom: none;
+    }
+
+    .legend-code {
+      width: 44px;
+      min-width: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 11px;
+      color: #000000;
+      border-right: 1px solid #000000;
+    }
+
+    .legend-desc {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 10.5px;
+      color: #000000;
+      padding: 0 4px;
+      text-align: center;
+    }
+
+    .legend-bottom-blue {
+      height: 73px;
+      min-height: 73px;
+      background-color: #7ab3d1;
+      border-top: 2.5px solid #000000;
+    }
+
+    /* Shift Code Colors & Patterns */
+    .code-A  { background-color: #fef08a; color: #000000; }
+    .code-B  { background-color: #bae6fd; color: #000000; }
+    .code-C  { background-color: #9ca3af; color: #000000; }
+    .code-D  { background-color: #fed7aa; color: #000000; }
+    .code-O  { background-color: #6082b6; color: #000000; }
+    .code-S  {
+      background: repeating-linear-gradient(90deg, #ef4444, #ef4444 3px, #fecaca 3px, #fecaca 6px);
+      color: #000000;
+    }
+    .code-V  { background-color: #f5d0fe; color: #000000; }
+    .code-T  { background-color: #1e3a8a; color: #ffffff; }
+    .code-MT { background-color: #ea580c; color: #000000; }
+    .code-E  {
+      background-color: #7f1d1d;
+      background-image: linear-gradient(rgba(255,255,255,0.25) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.25) 1px, transparent 1px);
+      background-size: 4px 4px;
+      color: #ffffff;
+    }
+    .code-SW { background-color: #3b6ea5; color: #ffffff; }
+    .code-CD { background-color: #374151; color: #ffffff; }
+
+    /* Print / PDF Rules */
+    @page {
+      size: A4 landscape;
+      margin: 6mm;
+    }
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .no-print { display: none !important; }
+      #mainApp { padding: 0 !important; max-width: 100% !important; }
+      #printArea {
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        display: flex !important;
+        justify-content: center !important;
+      }
+      .roster-wrapper {
+        border: 2.5px solid #000000 !important;
+        zoom: 0.72;
+      }
+      table.roster-table {
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+      }
+      table.roster-table th,
+      table.roster-table td {
+        border: none !important;
+        border-right: 1px solid #000000 !important;
+        border-bottom: 1px solid #000000 !important;
+      }
+      table.roster-table tr:last-child td {
+        border-bottom: none !important;
+      }
+      .thc-title-cell, .month-ver-cell, .staff-name-cell, .total-active-label, .count-row-label {
+        border-right: 2.5px solid #000000 !important;
+      }
+      .month-ver-cell, .day-name-cell {
+        border-bottom: 2.5px solid #000000 !important;
+      }
+      .total-active-label, .total-active-val {
+        border-top: 2.5px solid #000000 !important;
+      }
+      .team-divider-row td {
+        border-top: 2px solid #000000 !important;
+        border-bottom: 2px solid #000000 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Login Modal -->
+  <div id="loginScreen" class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
+      <div class="text-center mb-5">
+        <div class="inline-block bg-indigo-100 text-indigo-800 font-extrabold px-3 py-1 rounded-full text-xs mb-2">THC / OCC MASTER</div>
+        <h2 class="text-xl font-bold text-slate-800">Combined Roster (HQ + EMS)</h2>
+        <p class="text-xs text-slate-500 mt-1">Read-Only Consolidated Official View</p>
+      </div>
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Username</label>
+          <input type="text" id="loginUser" required placeholder="e.g. fawari" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-indigo-600" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+          <input type="password" id="loginPass" required placeholder="••••••••" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-indigo-600" />
+        </div>
+        <div id="loginError" class="text-xs text-red-600 font-semibold hidden"></div>
+        <button type="submit" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-2.5 rounded-lg text-sm transition">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="mainApp" class="hidden p-3 max-w-[1600px] mx-auto">
+
+    <!-- Top Control Bar -->
+    <div class="no-print bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <span id="syncStatus" class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">Connecting...</span>
+        <span id="roleBadge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">User</span>
+        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">Combined Official (HQ + EMS)</span>
+
+        <div class="h-5 w-px bg-slate-300 mx-1"></div>
+
+        <select id="monthSelect" class="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white"></select>
+        <select id="yearSelect" class="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white"></select>
+
+        <span id="statusInfo" class="text-xs font-semibold text-slate-500 ml-2"></span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5">
+        <button id="btnRefresh" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300">↻ Refresh</button>
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">🖨 Print / PDF</button>
+        <button id="btnExportCSV" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg">📥 CSV</button>
+        <button id="btnLogout" class="bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-red-200">Sign Out</button>
+      </div>
+    </div>
+
+    <!-- Roster Table Container -->
+    <div id="printArea" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 overflow-x-auto">
+      <div class="roster-wrapper" id="rosterWrapper">
+        <!-- Left Main Roster Table -->
+        <table class="roster-table" id="rosterTable">
+          <thead id="rosterHead"></thead>
+          <tbody id="rosterBody"></tbody>
+        </table>
+
+        <!-- Vertical Grey Divider -->
+        <div class="side-divider"></div>
+
+        <!-- Right Legend Panel -->
+        <div class="legend-panel">
+          <div class="legend-top-blue"></div>
+          <div class="legend-items-container" id="legendContainer"></div>
+          <div class="legend-bottom-blue"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ضع نفس مفتاح apiKey الحقيقي الموجود في ملف index.html المستقر لديك
+    const firebaseConfig = {
+      databaseURL: "https://leave-2027-default-rtdb.firebaseio.com",
+      apiKey: "AIzaSyA731dlhUgqoMGG7J_GUBn_H7vxvEPchms",
+      authDomain: "leave-2027.firebaseapp.com",
+      projectId: "leave-2027"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    const HQ_DB_ROOT = "monthly_roster_occ_thc";
+    const EMS_DB_ROOT = "monthly_roster_occ_ems";
+
+    const LEGEND_ITEMS = [
+      { code: "A",  desc: "07:00-15:00" },
+      { code: "B",  desc: "15:00-23:00" },
+      { code: "C",  desc: "23:00-07:00" },
+      { code: "D",  desc: "11:00-16:00" },
+      { code: "O",  desc: "Office duty" },
+      { code: "S",  desc: "Sick" },
+      { code: "V",  desc: "Vacation" },
+      { code: "T",  desc: "Training / Test" },
+      { code: "MT", desc: "Meeting / Task" },
+      { code: "E",  desc: "Family reason" },
+      { code: "SW", desc: "Shift Swap" },
+      { code: "CD", desc: "Compensation Day" }
+    ];
+
+    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const DAY_NAMES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+    let selectedMonth = new Date().getMonth();
+    let selectedYear = new Date().getFullYear();
+    let combinedData = {
+      hq: { version: "V1", staff: [], assignments: {} },
+      ems: { version: "V1", staff: [], assignments: {} }
+    };
+
+    // Render Legend
+    const legendContainer = document.getElementById("legendContainer");
+    LEGEND_ITEMS.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "legend-row";
+      row.innerHTML = `
+        <div class="legend-code code-${item.code}">${item.code}</div>
+        <div class="legend-desc">${item.desc}</div>
+      `;
+      legendContainer.appendChild(row);
+    });
+
+    // Populate Month & Year Selectors
+    const monthSelect = document.getElementById("monthSelect");
+    const yearSelect = document.getElementById("yearSelect");
+    MONTHS.forEach((m, idx) => {
+      const opt = document.createElement("option");
+      opt.value = idx;
+      opt.textContent = m;
+      if (idx === selectedMonth) opt.selected = true;
+      monthSelect.appendChild(opt);
+    });
+    for (let y = 2025; y <= 2030; y++) {
+      const opt = document.createElement("option");
+      opt.value = y;
+      opt.textContent = y;
+      if (y === selectedYear) opt.selected = true;
+      yearSelect.appendChild(opt);
+    }
+
+    monthSelect.addEventListener("change", () => { selectedMonth = parseInt(monthSelect.value); loadCombinedData(); });
+    yearSelect.addEventListener("change", () => { selectedYear = parseInt(yearSelect.value); loadCombinedData(); });
+    document.getElementById("btnRefresh").addEventListener("click", loadCombinedData);
+
+    // Auth Handling
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const rawUser = document.getElementById("loginUser").value.trim().toLowerCase();
+      const email = rawUser.includes("@") ? rawUser : `${rawUser}@occ.local`;
+      const pass = document.getElementById("loginPass").value;
+      const errEl = document.getElementById("loginError");
+      errEl.classList.add("hidden");
+      try {
+        await auth.signInWithEmailAndPassword(email, pass);
+      } catch (err) {
+        errEl.textContent = "Invalid username or password (or check apiKey).";
+        errEl.classList.remove("hidden");
+      }
+    });
+
+    document.getElementById("btnLogout").addEventListener("click", () => auth.signOut());
+
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        document.getElementById("loginScreen").classList.remove("hidden");
+        document.getElementById("mainApp").classList.add("hidden");
+        return;
+      }
+      const username = user.email.split("@")[0].toLowerCase();
+      document.getElementById("loginScreen").classList.add("hidden");
+      document.getElementById("mainApp").classList.remove("hidden");
+      document.getElementById("roleBadge").textContent = username;
+
+      db.ref(".info/connected").on("value", snap => {
+        const el = document.getElementById("syncStatus");
+        if (snap.val() === true) {
+          el.textContent = "Live Cloud Sync";
+          el.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+        } else {
+          el.textContent = "Offline";
+          el.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800";
+        }
+      });
+
+      loadCombinedData();
+    });
+
+    function getMonthKey() {
+      return `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
+    }
+
+    async function loadCombinedData() {
+      const key = getMonthKey();
+      document.getElementById("statusInfo").textContent = "Loading...";
+      const [hqSnap, emsSnap] = await Promise.all([
+        db.ref(`${HQ_DB_ROOT}/published/${key}`).once("value"),
+        db.ref(`${EMS_DB_ROOT}/published/${key}`).once("value")
+      ]);
+      const hqVal = hqSnap.val() || { version: "-", staff: [], assignments: {} };
+      const emsVal = emsSnap.val() || { version: "-", staff: [], assignments: {} };
+
+      combinedData = {
+        hq: { version: hqVal.version || "V1", staff: hqVal.staff || [], assignments: hqVal.assignments || {} },
+        ems: { version: emsVal.version || "V1", staff: emsVal.staff || [], assignments: emsVal.assignments || {} }
+      };
+
+      document.getElementById("statusInfo").textContent =
+        `HQ: ${combinedData.hq.staff.length} staff (${hqVal.version || "Not Published"}) | EMS: ${combinedData.ems.staff.length} staff (${emsVal.version || "Not Published"})`;
+
+      renderRoster();
+    }
+
+    function getDaysInMonth(year, month) {
+      const total = new Date(year, month + 1, 0).getDate();
+      const days = [];
+      for (let d = 1; d <= total; d++) {
+        const dt = new Date(year, month, d);
+        const dayIdx = dt.getDay();
+        days.push({
+          day: d,
+          name: DAY_NAMES[dayIdx],
+          isWeekend: (dayIdx === 5 || dayIdx === 6)
+        });
+      }
+      return days;
+    }
+
+    function renderRoster() {
+      const days = getDaysInMonth(selectedYear, selectedMonth);
+      const thead = document.getElementById("rosterHead");
+      const tbody = document.getElementById("rosterBody");
+
+      const monthLabel = `${MONTHS[selectedMonth]}-${String(selectedYear).slice(-2)} / COMBINED`;
+
+      let h1 = `<tr><th class="thc-title-cell">THC / OCC (HQ + EMS)</th>`;
+      days.forEach(d => { h1 += `<th class="day-num-cell">${d.day}</th>`; });
+      h1 += `</tr>`;
+
+      let h2 = `<tr><th class="month-ver-cell">${monthLabel}</th>`;
+      days.forEach(d => { h2 += `<th class="day-name-cell ${d.isWeekend ? 'wknd-hdr' : ''}">${d.name}</th>`; });
+      h2 += `</tr>`;
+      thead.innerHTML = h1 + h2;
+
+      let bodyHTML = "";
+      const activeTotals = {};
+      const shiftCounts = { A: {}, B: {}, C: {} };
+
+      days.forEach(d => {
+        activeTotals[d.day] = 0;
+        shiftCounts.A[d.day] = 0;
+        shiftCounts.B[d.day] = 0;
+        shiftCounts.C[d.day] = 0;
+      });
+
+      // 1. HQ Team
+      combinedData.hq.staff.forEach(person => {
+        const pAssign = combinedData.hq.assignments[person.id] || {};
+        bodyHTML += `<tr><td class="staff-name-cell">${person.name}</td>`;
+        days.forEach(d => {
+          const code = pAssign[d.day] || "";
+          if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
+          if (code === "A") shiftCounts.A[d.day]++;
+          if (code === "B") shiftCounts.B[d.day]++;
+          if (code === "C") shiftCounts.C[d.day]++;
+          bodyHTML += `<td class="shift-cell ${code ? 'code-' + code : ''}">${code}</td>`;
+        });
+        bodyHTML += `</tr>`;
+      });
+
+      // 2. Divider Row
+      bodyHTML += `<tr class="team-divider-row"><td colspan="${days.length + 1}">--- EMS TEAM ---</td></tr>`;
+
+      // 3. EMS Team
+      combinedData.ems.staff.forEach(person => {
+        const pAssign = combinedData.ems.assignments[person.id] || {};
+        bodyHTML += `<tr><td class="staff-name-cell">${person.name}</td>`;
+        days.forEach(d => {
+          const code = pAssign[d.day] || "";
+          if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
+          if (code === "A") shiftCounts.A[d.day]++;
+          if (code === "B") shiftCounts.B[d.day]++;
+          if (code === "C") shiftCounts.C[d.day]++;
+          bodyHTML += `<td class="shift-cell ${code ? 'code-' + code : ''}">${code}</td>`;
+        });
+        bodyHTML += `</tr>`;
+      });
+
+      // 4. Consolidated Summary Rows
+      bodyHTML += `<tr><td class="total-active-label">Total Active</td>`;
+      days.forEach(d => { bodyHTML += `<td class="total-active-val">${activeTotals[d.day]}</td>`; });
+      bodyHTML += `</tr>`;
+
+      const summaryMeta = [
+        { code: "A", label: `A <span class="font-normal text-[9.5px]">(07:00-15:00)</span>`, cls: "code-A" },
+        { code: "B", label: `B <span class="font-normal text-[9.5px]">(15:00-23:00)</span>`, cls: "code-B" },
+        { code: "C", label: `C <span class="font-normal text-[9.5px]">(23:00-07:00)</span>`, cls: "code-C" }
+      ];
+
+      summaryMeta.forEach(sm => {
+        bodyHTML += `<tr><td class="count-row-label ${sm.cls}">${sm.label}</td>`;
+        days.forEach(d => { bodyHTML += `<td class="count-row-val">${shiftCounts[sm.code][d.day]}</td>`; });
+        bodyHTML += `</tr>`;
+      });
+
+      tbody.innerHTML = bodyHTML;
+    }
+
+    // CSV Export
+    document.getElementById("btnExportCSV").addEventListener("click", () => {
+      const days = getDaysInMonth(selectedYear, selectedMonth);
+      let csv = `Team,Staff,${days.map(d => d.day).join(",")}\n`;
+      combinedData.hq.staff.forEach(p => {
+        const row = days.map(d => (combinedData.hq.assignments[p.id] && combinedData.hq.assignments[p.id][d.day]) || "");
+        csv += `HQ,"${p.name}",${row.join(",")}\n`;
+      });
+      combinedData.ems.staff.forEach(p => {
+        const row = days.map(d => (combinedData.ems.assignments[p.id] && combinedData.ems.assignments[p.id][d.day]) || "");
+        csv += `EMS,"${p.name}",${row.join(",")}\n`;
+      });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `THC_OCC_Combined_${getMonthKey()}.csv`;
+      a.click();
+    });
+  </script>
+</body>
+</html>
