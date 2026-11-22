@@ -1,731 +1,968 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>THC / OCC - Combined Master Roster (HQ + EMS)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f1f5f9;
-      color: #0f172a;
-      margin: 0;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Shift Roster — THC / OCC Combined (HQ + EMS)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            user-select: none;
+            -webkit-user-select: none;
+        }
 
-    .roster-wrapper {
-      display: inline-flex;
-      align-items: stretch;
-      background: #ffffff;
-      border: 2.5px solid #000000;
-    }
+        .custom-scrollbar::-webkit-scrollbar { height: 9px; width: 9px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-    table.roster-table {
-      border-collapse: collapse;
-      background: #ffffff;
-      font-size: 11px;
-      line-height: 1.15;
-    }
+        .sticky-emp-col {
+            position: sticky;
+            left: 0;
+            z-index: 20;
+            box-shadow: 3px 0 8px -3px rgba(15, 23, 42, 0.16);
+        }
 
-    table.roster-table th,
-    table.roster-table td {
-      border: 1px solid #000000;
-      text-align: center;
-      vertical-align: middle;
-      padding: 0;
-      user-select: none;
-    }
+        .roster-grid {
+            border-collapse: collapse;
+        }
+        .roster-grid th,
+        .roster-grid td {
+            border: 1px solid #000000;
+        }
 
-    .thc-title-cell {
-      background-color: #b4d5c0;
-      font-weight: 800;
-      font-size: 13px;
-      color: #000000;
-      min-width: 175px;
-      width: 175px;
-      height: 28px;
-      border-right: 2.5px solid #000000 !important;
-      border-bottom: 2px solid #000000 !important;
-    }
+        .shift-letter {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            line-height: 1;
+        }
 
-    .month-ver-cell {
-      background-color: #ffffff;
-      font-weight: 800;
-      font-size: 11.5px;
-      color: #1d4ed8;
-      height: 24px;
-      border-right: 2.5px solid #000000 !important;
-      border-bottom: 2.5px solid #000000 !important;
-    }
+        /* Exact Cell Fill Patterns from Original Files */
+        .pattern-stripes {
+            background-image: repeating-linear-gradient(
+                90deg,
+                #ef4444 0px,
+                #ef4444 3px,
+                #ffffff 3px,
+                #ffffff 6px
+            ) !important;
+        }
+        .pattern-grid {
+            background-image:
+                linear-gradient(to right, rgba(0, 0, 0, 0.52) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 0, 0, 0.52) 1px, transparent 1px);
+            background-size: 4px 4px;
+        }
+        .crisp-striped-text {
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.98), 0 0 1px rgba(255, 255, 255, 0.98);
+        }
 
-    .day-num-cell {
-      background-color: #7ab3d1;
-      font-weight: 800;
-      font-size: 11px;
-      color: #000000;
-      width: 28px;
-      min-width: 28px;
-      height: 28px;
-      border-bottom: 1.5px solid #000000 !important;
-    }
-
-    .day-name-cell {
-      background-color: #ffffff;
-      font-weight: 700;
-      font-size: 10px;
-      color: #000000;
-      width: 28px;
-      min-width: 28px;
-      height: 24px;
-      border-bottom: 2.5px solid #000000 !important;
-    }
-
-    .wknd-hdr {
-      background-color: #e2e8f0 !important;
-    }
-
-    .staff-name-cell {
-      text-align: left !important;
-      padding: 0 6px !important;
-      font-weight: 700;
-      font-size: 11.5px;
-      color: #000000;
-      height: 25px;
-      white-space: nowrap;
-      border-right: 2.5px solid #000000 !important;
-      background-color: #ffffff;
-    }
-
-    .team-divider-row td {
-      background-color: #dbeafe !important;
-      color: #1e3a8a !important;
-      font-weight: 800 !important;
-      font-size: 10.5px !important;
-      height: 22px !important;
-      letter-spacing: 0.6px;
-      border-top: 2px solid #000000 !important;
-      border-bottom: 2px solid #000000 !important;
-    }
-
-    .shift-cell {
-      width: 28px;
-      min-width: 28px;
-      height: 25px;
-      font-weight: 800;
-      font-size: 11px;
-    }
-
-    /* Summary Rows */
-    .total-active-label {
-      background-color: #9ec5ab;
-      font-weight: 800;
-      font-size: 11.5px;
-      color: #000000;
-      height: 25px;
-      border-top: 2.5px solid #000000 !important;
-      border-right: 2.5px solid #000000 !important;
-    }
-    .total-active-val {
-      background-color: #f3c6c6;
-      font-weight: 800;
-      font-size: 11px;
-      color: #991b1b;
-      height: 25px;
-      border-top: 2.5px solid #000000 !important;
-    }
-
-    .count-row-label {
-      font-weight: 800;
-      font-size: 11px;
-      color: #000000;
-      height: 24px;
-      border-right: 2.5px solid #000000 !important;
-    }
-    .count-row-val {
-      background-color: #ffffff;
-      font-weight: 800;
-      font-size: 11px;
-      color: #000000;
-      height: 24px;
-    }
-
-    /* Right Side Divider & Legend Panel */
-    .side-divider {
-      width: 12px;
-      min-width: 12px;
-      background-color: #808080;
-      border-left: 2.5px solid #000000;
-      border-right: 2.5px solid #000000;
-    }
-
-    .legend-panel {
-      display: flex;
-      flex-direction: column;
-      width: 185px;
-      min-width: 185px;
-      background-color: #ffffff;
-    }
-
-    .legend-top-blue {
-      height: 52px;
-      min-height: 52px;
-      background-color: #7ab3d1;
-      border-bottom: 2.5px solid #000000;
-    }
-
-    .legend-items-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .legend-row {
-      display: flex;
-      flex: 1;
-      min-height: 22px;
-      border-bottom: 1px solid #000000;
-    }
-    .legend-row:last-child {
-      border-bottom: none;
-    }
-
-    .legend-code {
-      width: 44px;
-      min-width: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 11px;
-      color: #000000;
-      border-right: 1px solid #000000;
-    }
-
-    .legend-desc {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 10.5px;
-      color: #000000;
-      padding: 0 4px;
-      text-align: center;
-    }
-
-    .legend-bottom-blue {
-      height: 73px;
-      min-height: 73px;
-      background-color: #7ab3d1;
-      border-top: 2.5px solid #000000;
-    }
-
-    /* Shift Code Colors & Patterns */
-    .code-A  { background-color: #fef08a; color: #000000; }
-    .code-B  { background-color: #bae6fd; color: #000000; }
-    .code-C  { background-color: #9ca3af; color: #000000; }
-    .code-D  { background-color: #fed7aa; color: #000000; }
-    .code-O  { background-color: #6082b6; color: #000000; }
-    .code-S  {
-      background: repeating-linear-gradient(90deg, #ef4444, #ef4444 3px, #fecaca 3px, #fecaca 6px);
-      color: #000000;
-    }
-    .code-V  { background-color: #f5d0fe; color: #000000; }
-    .code-T  { background-color: #1e3a8a; color: #ffffff; }
-    .code-MT { background-color: #ea580c; color: #000000; }
-    .code-E  {
-      background-color: #7f1d1d;
-      background-image: linear-gradient(rgba(255,255,255,0.25) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.25) 1px, transparent 1px);
-      background-size: 4px 4px;
-      color: #ffffff;
-    }
-    .code-SW { background-color: #3b6ea5; color: #ffffff; }
-    .code-CD { background-color: #374151; color: #ffffff; }
-
-    /* Print / PDF Rules */
-    @page {
-      size: A4 landscape;
-      margin: 6mm;
-    }
-    @media print {
-      * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-      body {
-        background: #ffffff !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      .no-print { display: none !important; }
-      #mainApp { padding: 0 !important; max-width: 100% !important; }
-      #printArea {
-        overflow: visible !important;
-        box-shadow: none !important;
-        border: none !important;
-        padding: 0 !important;
-        display: flex !important;
-        justify-content: center !important;
-      }
-      .roster-wrapper {
-        border: 2.5px solid #000000 !important;
-        zoom: 0.72;
-      }
-      table.roster-table {
-        border-collapse: separate !important;
-        border-spacing: 0 !important;
-      }
-      table.roster-table th,
-      table.roster-table td {
-        border: none !important;
-        border-right: 1px solid #000000 !important;
-        border-bottom: 1px solid #000000 !important;
-      }
-      table.roster-table tr:last-child td {
-        border-bottom: none !important;
-      }
-      .thc-title-cell, .month-ver-cell, .staff-name-cell, .total-active-label, .count-row-label {
-        border-right: 2.5px solid #000000 !important;
-      }
-      .month-ver-cell, .day-name-cell {
-        border-bottom: 2.5px solid #000000 !important;
-      }
-      .total-active-label, .total-active-val {
-        border-top: 2.5px solid #000000 !important;
-      }
-      .team-divider-row td {
-        border-top: 2px solid #000000 !important;
-        border-bottom: 2px solid #000000 !important;
-      }
-    }
-  </style>
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 6mm;
+            }
+            html, body {
+                background-color: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print, #loginGateOverlay { display: none !important; }
+            main {
+                padding: 0 !important;
+                margin: 0 !important;
+                display: block !important;
+                width: 100% !important;
+            }
+            #rosterOuterCard {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                overflow: visible !important;
+                width: 100% !important;
+                max-width: none !important;
+            }
+            .sticky-emp-col {
+                position: static !important;
+                box-shadow: none !important;
+            }
+            #rosterScrollContainer {
+                overflow: visible !important;
+                width: 100% !important;
+            }
+            #unifiedRosterWrapper {
+                transform-origin: top left;
+                zoom: var(--print-scale, 0.68);
+            }
+        }
+    </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
 
-  <!-- Login Modal -->
-  <div id="loginScreen" class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
-      <div class="text-center mb-5">
-        <div class="inline-block bg-indigo-100 text-indigo-800 font-extrabold px-3 py-1 rounded-full text-xs mb-2">THC / OCC MASTER</div>
-        <h2 class="text-xl font-bold text-slate-800">Combined Roster (HQ + EMS)</h2>
-        <p class="text-xs text-slate-500 mt-1">Read-Only Consolidated Official View</p>
-      </div>
-      <form id="loginForm" class="space-y-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Username</label>
-          <input type="text" id="loginUser" required placeholder="e.g. fawari" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-indigo-600" />
+    <!-- Login Gate Overlay -->
+    <div id="loginGateOverlay" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border-2 border-indigo-600 space-y-4">
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-700 text-white flex items-center justify-center mx-auto shadow-sm mb-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                </div>
+                <h2 class="text-lg font-black text-slate-900">THC / OCC Combined Roster</h2>
+                <p class="text-xs font-semibold text-slate-500">Consolidated Official View (HQ + EMS)</p>
+            </div>
+            <form id="firebaseLoginForm" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Username</label>
+                    <input type="text" id="gateUsernameInput" required placeholder="e.g. fawari" autocomplete="username"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                    <input type="password" id="gatePasswordInput" required placeholder="••••••••" autocomplete="current-password"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                </div>
+                <p id="gateLoginError" class="hidden text-xs font-bold text-rose-600 text-center"></p>
+                <button type="submit"
+                    class="w-full py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-sm font-extrabold shadow-sm transition cursor-pointer">
+                    Sign In
+                </button>
+            </form>
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
-          <input type="password" id="loginPass" required placeholder="••••••••" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-indigo-600" />
-        </div>
-        <div id="loginError" class="text-xs text-red-600 font-semibold hidden"></div>
-        <button type="submit" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-2.5 rounded-lg text-sm transition">Sign In</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Main App -->
-  <div id="mainApp" class="hidden p-3 max-w-[1600px] mx-auto">
-
-    <!-- Top Control Bar -->
-    <div class="no-print bg-white rounded-xl shadow-sm border border-slate-200 p-3 mb-3 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex flex-wrap items-center gap-2">
-        <span id="syncStatus" class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">Connecting...</span>
-        <span id="roleBadge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">User</span>
-        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">Combined Official (HQ + EMS)</span>
-
-        <div class="h-5 w-px bg-slate-300 mx-1"></div>
-
-        <select id="monthSelect" class="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white"></select>
-        <select id="yearSelect" class="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white"></select>
-
-        <span id="statusInfo" class="text-xs font-semibold text-slate-600 ml-2"></span>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-1.5">
-        <button id="btnRefresh" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300">↻ Refresh</button>
-        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">🖨 Print / PDF</button>
-        <button id="btnExportCSV" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg">📥 CSV</button>
-        <button id="btnLogout" class="bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-red-200">Sign Out</button>
-      </div>
     </div>
 
-    <!-- Roster Table Container -->
-    <div id="printArea" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 overflow-x-auto">
-      <div class="roster-wrapper" id="rosterWrapper">
-        <table class="roster-table" id="rosterTable">
-          <thead id="rosterHead"></thead>
-          <tbody id="rosterBody"></tbody>
-        </table>
+    <!-- Main App Wrapper -->
+    <div id="protectedAppShell" class="hidden min-h-screen flex flex-col">
 
-        <div class="side-divider"></div>
+        <!-- Top Application Bar -->
+        <header class="bg-white border-b border-slate-300 sticky top-0 z-30 shadow-xs no-print">
+            <div class="max-w-[1840px] mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-700 text-white flex items-center justify-center shadow-xs shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h1 class="text-base sm:text-lg font-extrabold text-slate-900">Combined Shift Roster — THC / OCC (HQ + EMS)</h1>
+                            <span id="cloudStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                <span id="cloudStatusDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                <span id="cloudStatusText">Connecting...</span>
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-50 text-indigo-800 border border-indigo-300">
+                                ● Combined Official (Read-Only)
+                            </span>
+                        </div>
+                        <p id="loggedUserSubtitle" class="text-xs text-slate-500 mt-0.5">Dec 2026 – Dec 2030</p>
+                    </div>
+                </div>
 
-        <div class="legend-panel">
-          <div class="legend-top-blue"></div>
-          <div class="legend-items-container" id="legendContainer"></div>
-          <div class="legend-bottom-blue"></div>
-        </div>
-      </div>
+                <!-- Navigation & Action Controls -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    <div class="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-300 shadow-2xs">
+                        <button type="button" id="prevMonthBtn" data-action="prev-month"
+                            class="w-7 h-7 rounded-lg bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 flex items-center justify-center text-xs font-black text-slate-700 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                            ◀
+                        </button>
+                        <select id="monthPartSelect" aria-label="Select Month"
+                            class="h-7 px-2 rounded-lg bg-white border border-slate-200 text-xs font-extrabold text-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer">
+                        </select>
+                        <select id="yearPartSelect" aria-label="Select Year"
+                            class="h-7 px-2 rounded-lg bg-white border border-slate-200 text-xs font-extrabold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 cursor-pointer">
+                            <option value="2026">2026</option>
+                            <option value="2027">2027</option>
+                            <option value="2028">2028</option>
+                            <option value="2029">2029</option>
+                            <option value="2030">2030</option>
+                        </select>
+                        <button type="button" id="nextMonthBtn" data-action="next-month"
+                            class="w-7 h-7 rounded-lg bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 flex items-center justify-center text-xs font-black text-slate-700 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                            ▶
+                        </button>
+                    </div>
+
+                    <div class="inline-flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-slate-300">
+                        <input type="text" id="empSearchInput" placeholder="Search name..."
+                            class="w-24 sm:w-28 px-1.5 py-0.5 text-xs font-semibold text-slate-800 focus:outline-none">
+                        <span class="text-slate-300">|</span>
+                        <select id="teamFilterSelect"
+                            class="py-0.5 pr-1 bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer">
+                            <option value="all">All Teams (HQ + EMS)</option>
+                            <option value="hq">HQ Only</option>
+                            <option value="ems">EMS Only</option>
+                        </select>
+                    </div>
+
+                    <button type="button" data-action="print-roster"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition cursor-pointer">
+                        <span>🖨 Print / PDF</span>
+                    </button>
+
+                    <button type="button" data-action="export-csv"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition cursor-pointer">
+                        <span>📥 Export CSV</span>
+                    </button>
+
+                    <button type="button" data-action="sign-out"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition cursor-pointer">
+                        <span>Sign Out</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="w-full px-2 sm:px-6 py-4 space-y-3.5 flex-1 flex flex-col items-center">
+            <section id="rosterOuterCard" style="width: fit-content; max-width: 100%;" class="bg-white rounded-2xl border border-slate-300 shadow-sm p-3 sm:p-4 overflow-hidden">
+                <div id="rosterScrollContainer" class="w-full overflow-x-auto custom-scrollbar pb-1.5">
+                    <div id="unifiedRosterWrapper" class="inline-block min-w-max"></div>
+                </div>
+            </section>
+        </main>
     </div>
-  </div>
 
-  <script>
-    const firebaseConfig = {
-      databaseURL: "https://leave-2027-default-rtdb.firebaseio.com",
-      apiKey: "AIzaSyA731dlhUgqoMGG7J_GUBn_H7vxvEPchms",
-      authDomain: "leave-2027.firebaseapp.com",
-      projectId: "leave-2027"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
+    <script>
+        (function () {
+            "use strict";
 
-    const HQ_DB_ROOT = "monthly_roster_occ_thc";
-    const EMS_DB_ROOT = "monthly_roster_occ_ems";
+            // ضع مفتاح apiKey الحقيقي الخاص بمشروع leave-2027 مكان "APIKEY"
+            const firebaseConfig = {
+                apiKey: "APIKEY",
+                authDomain: "leave-2027.firebaseapp.com",
+                databaseURL: "https://leave-2027-default-rtdb.firebaseio.com",
+                projectId: "leave-2027",
+                storageBucket: "leave-2027.firebasestorage.app",
+                messagingSenderId: "704005666346",
+                appId: "1:704005666346:web:02ccdf6182c834ad85b553",
+                measurementId: "G-K3KGCM517L"
+            };
 
-    const LEGEND_ITEMS = [
-      { code: "A",  desc: "07:00-15:00" },
-      { code: "B",  desc: "15:00-23:00" },
-      { code: "C",  desc: "23:00-07:00" },
-      { code: "D",  desc: "11:00-16:00" },
-      { code: "O",  desc: "Office duty" },
-      { code: "S",  desc: "Sick" },
-      { code: "V",  desc: "Vacation" },
-      { code: "T",  desc: "Training / Test" },
-      { code: "MT", desc: "Meeting / Task" },
-      { code: "E",  desc: "Family reason" },
-      { code: "SW", desc: "Shift Swap" },
-      { code: "CD", desc: "Compensation Day" }
-    ];
+            const HQ_DB_PATH = "monthly_roster_occ_thc";
+            const EMS_DB_PATH = "monthly_roster_occ_ems";
+            const AUTH_DOMAIN_SUFFIX = "@occ.local";
+            const CORE_COUNTER_CODES = ["A", "B", "C"];
+            const ACTIVE_SHIFT_CODES = ["A", "B", "C", "D"];
+            const WEEKEND_DAYS = [5, 6]; // Friday & Saturday
 
-    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const DAY_NAMES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+            const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const MONTHS_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const DAYS_TWO_LETTER = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 
-    let selectedMonth = 11; 
-    let selectedYear = 2026;
-    let combinedData = {
-      hq: { version: "V1", staffList: [], rawAssignments: {}, rawOverrides: {} },
-      ems: { version: "V1", staffList: [], rawAssignments: {}, rawOverrides: {} }
-    };
+            const DEFAULT_CODES = [
+                { code: "A",  label: "07:00-15:00",      color: "#fff59d", textColor: "#000000", pattern: "solid",   core: true },
+                { code: "B",  label: "15:00-23:00",      color: "#bae6fd", textColor: "#000000", pattern: "solid",   core: true },
+                { code: "C",  label: "23:00-07:00",      color: "#9ca3af", textColor: "#000000", pattern: "solid",   core: true },
+                { code: "D",  label: "10:00-18:00",      color: "#fed7aa", textColor: "#000000", pattern: "solid",   core: false },
+                { code: "O",  label: "Office duty",      color: "#60a5fa", textColor: "#000000", pattern: "solid",   core: false },
+                { code: "S",  label: "Sick",             color: "#ef4444", textColor: "#000000", pattern: "stripes", core: false },
+                { code: "V",  label: "Vacation",         color: "#fbcfe8", textColor: "#000000", pattern: "solid",   core: false },
+                { code: "T",  label: "Training / Test",  color: "#1e3a8a", textColor: "#ffffff", pattern: "solid",   core: false },
+                { code: "MT", label: "Meeting / Task",   color: "#f59e0b", textColor: "#000000", pattern: "solid",   core: false },
+                { code: "E",  label: "Family reason",    color: "#dc2626", textColor: "#ffffff", pattern: "grid",    core: false },
+                { code: "SW", label: "Shift Swap",       color: "#2563eb", textColor: "#ffffff", pattern: "solid",   core: false },
+                { code: "CD", label: "Compensation Day", color: "#475569", textColor: "#ffffff", pattern: "solid",   core: false }
+            ];
 
-    const legendContainer = document.getElementById("legendContainer");
-    LEGEND_ITEMS.forEach(item => {
-      const row = document.createElement("div");
-      row.className = "legend-row";
-      row.innerHTML = `
-        <div class="legend-code code-${item.code}">${item.code}</div>
-        <div class="legend-desc">${item.desc}</div>
-      `;
-      legendContainer.appendChild(row);
-    });
+            const state = {
+                currentMonthKey: "2026-12",
+                teamFilter: "all",
+                searchQuery: "",
+                hqPublished: null,
+                emsPublished: null
+            };
 
-    const monthSelect = document.getElementById("monthSelect");
-    const yearSelect = document.getElementById("yearSelect");
+            let authInstance = null;
+            let dbInstance = null;
+            let currentUsername = "";
 
-    function populateMonthOptions() {
-      monthSelect.innerHTML = "";
-      const startMonth = (selectedYear === 2026) ? 11 : 0;
-      if (selectedMonth < startMonth) selectedMonth = startMonth;
-      for (let idx = startMonth; idx < 12; idx++) {
-        const opt = document.createElement("option");
-        opt.value = idx;
-        opt.textContent = MONTHS[idx];
-        if (idx === selectedMonth) opt.selected = true;
-        monthSelect.appendChild(opt);
-      }
-    }
+            function escapeHtml(str) {
+                return String(str)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;");
+            }
 
-    for (let y = 2026; y <= 2030; y++) {
-      const opt = document.createElement("option");
-      opt.value = y;
-      opt.textContent = y;
-      if (y === selectedYear) opt.selected = true;
-      yearSelect.appendChild(opt);
-    }
-    populateMonthOptions();
+            function getContrastTextColor(hex) {
+                const clean = String(hex || "#ffffff").replace("#", "");
+                if (clean.length !== 6) return "#000000";
+                const r = parseInt(clean.substring(0, 2), 16);
+                const g = parseInt(clean.substring(2, 4), 16);
+                const b = parseInt(clean.substring(4, 6), 16);
+                const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                return luminance > 0.56 ? "#000000" : "#ffffff";
+            }
 
-    monthSelect.addEventListener("change", () => {
-      selectedMonth = parseInt(monthSelect.value);
-      loadCombinedData();
-    });
-    yearSelect.addEventListener("change", () => {
-      selectedYear = parseInt(yearSelect.value);
-      populateMonthOptions();
-      loadCombinedData();
-    });
-    document.getElementById("btnRefresh").addEventListener("click", loadCombinedData);
+            function resolveCodeTextColor(codeObj) {
+                if (codeObj && /^#[0-9A-Fa-f]{6}$/.test(String(codeObj.textColor || ""))) {
+                    return String(codeObj.textColor);
+                }
+                if (codeObj && String(codeObj.code).toUpperCase() === "S") {
+                    return "#000000";
+                }
+                return getContrastTextColor(codeObj ? codeObj.color : "#ffffff");
+            }
 
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const rawUser = document.getElementById("loginUser").value.trim().toLowerCase();
-      const email = rawUser.includes("@") ? rawUser : `${rawUser}@occ.local`;
-      const pass = document.getElementById("loginPass").value;
-      const errEl = document.getElementById("loginError");
-      errEl.classList.add("hidden");
-      try {
-        await auth.signInWithEmailAndPassword(email, pass);
-      } catch (err) {
-        errEl.textContent = "Invalid username or password (or check apiKey).";
-        errEl.classList.remove("hidden");
-      }
-    });
+            function getPatternClass(pattern) {
+                if (pattern === "stripes" || pattern === "v-stripes") return "pattern-stripes";
+                if (pattern === "grid") return "pattern-grid";
+                return "";
+            }
 
-    document.getElementById("btnLogout").addEventListener("click", () => auth.signOut());
+            function parseMonthKey(monthKey) {
+                const parts = String(monthKey || "2026-12").split("-");
+                const year = Math.max(2026, Math.min(2030, Number(parts[0]) || 2026));
+                let monthIndex = Math.max(0, Math.min(11, (Number(parts[1]) || 12) - 1));
+                if (year === 2026 && monthIndex < 11) {
+                    monthIndex = 11;
+                }
+                return { year, monthIndex };
+            }
 
-    auth.onAuthStateChanged(user => {
-      if (!user) {
-        document.getElementById("loginScreen").classList.remove("hidden");
-        document.getElementById("mainApp").classList.add("hidden");
-        return;
-      }
-      const username = user.email.split("@")[0].toLowerCase();
-      document.getElementById("loginScreen").classList.add("hidden");
-      document.getElementById("mainApp").classList.remove("hidden");
-      document.getElementById("roleBadge").textContent = username;
+            function normalizeRosterMonthKey(monthKey) {
+                const { year, monthIndex } = parseMonthKey(monthKey);
+                return year + "-" + String(monthIndex + 1).padStart(2, "0");
+            }
 
-      db.ref(".info/connected").on("value", snap => {
-        const el = document.getElementById("syncStatus");
-        if (snap.val() === true) {
-          el.textContent = "Live Cloud Sync";
-          el.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
-        } else {
-          el.textContent = "Offline";
-          el.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800";
-        }
-      });
+            function formatMonthBadge(monthKey) {
+                const { year, monthIndex } = parseMonthKey(monthKey);
+                return MONTHS_SHORT[monthIndex] + "-" + String(year).slice(-2);
+            }
 
-      loadCombinedData();
-    });
+            function getDaysInMonthKey(monthKey) {
+                const { year, monthIndex } = parseMonthKey(monthKey);
+                const count = new Date(year, monthIndex + 1, 0).getDate();
+                const days = [];
+                for (let d = 1; d <= count; d++) {
+                    const dow = new Date(year, monthIndex, d).getDay();
+                    days.push({
+                        day: d,
+                        dow: dow,
+                        abbr: DAYS_TWO_LETTER[dow],
+                        isWeekend: WEEKEND_DAYS.includes(dow)
+                    });
+                }
+                return days;
+            }
 
-    function getMonthKey() {
-      return `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
-    }
+            function populateMonthSelectDropdown(selectedYear) {
+                const monthSel = document.getElementById("monthPartSelect");
+                if (!monthSel) return;
+                const yNum = Number(selectedYear) || 2026;
+                const startIdx = yNum === 2026 ? 11 : 0;
+                const opts = [];
+                for (let idx = startIdx; idx < 12; idx++) {
+                    const mVal = String(idx + 1).padStart(2, "0");
+                    opts.push(`<option value="${mVal}">${MONTHS_FULL[idx]} (${MONTHS_SHORT[idx]})</option>`);
+                }
+                monthSel.innerHTML = opts.join("");
+            }
 
-    function parsePublishedTree(pubObj, monthKey) {
-      if (!pubObj || typeof pubObj !== "object") {
-        return { version: "-", staffList: [], rawAssignments: {}, rawOverrides: {} };
-      }
+            function syncDateNavigatorInputs() {
+                state.currentMonthKey = normalizeRosterMonthKey(state.currentMonthKey);
+                const parts = state.currentMonthKey.split("-");
+                const yStr = parts[0];
+                const mStr = parts[1];
 
-      const rawEmployees = pubObj.employees || pubObj.staff || [];
-      const empValues = Array.isArray(rawEmployees) ? rawEmployees : Object.values(rawEmployees);
+                const yearSel = document.getElementById("yearPartSelect");
+                const monthSel = document.getElementById("monthPartSelect");
+                if (yearSel && yearSel.value !== yStr) yearSel.value = yStr;
 
-      const monthsNode = pubObj.months || {};
-      const monthData = monthsNode[monthKey];
+                populateMonthSelectDropdown(yStr);
+                if (monthSel) monthSel.value = mStr;
 
-      if (!monthData) {
-        return { version: "-", staffList: [], rawAssignments: {}, rawOverrides: {} };
-      }
+                const prevBtn = document.getElementById("prevMonthBtn");
+                const nextBtn = document.getElementById("nextMonthBtn");
+                if (prevBtn) prevBtn.disabled = (state.currentMonthKey === "2026-12");
+                if (nextBtn) nextBtn.disabled = (state.currentMonthKey === "2030-12");
+            }
 
-      const rawAssignments = monthData.assignments || {};
-      const rawOverrides = monthData.overrides || {};
+            function updateStatusBadge(mode) {
+                const badge = document.getElementById("cloudStatusBadge");
+                const dot = document.getElementById("cloudStatusDot");
+                const text = document.getElementById("cloudStatusText");
+                if (!badge || !dot || !text) return;
 
-      const staffList = empValues
-        .filter(emp => emp !== null && emp !== undefined && typeof emp === "object")
-        .map(emp => ({
-          id: String(emp.id),
-          name: emp.name || emp.fullName || String(emp.id),
-          username: emp.username ? String(emp.username) : ""
-        }));
+                if (mode === "connected") {
+                    badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200";
+                    dot.className = "w-2 h-2 rounded-full bg-emerald-500";
+                    text.textContent = "Live Cloud Sync";
+                } else {
+                    badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200";
+                    dot.className = "w-2 h-2 rounded-full bg-amber-500";
+                    text.textContent = "Offline";
+                }
+            }
 
-      return {
-        version: monthData.version || "V1",
-        staffList,
-        rawAssignments,
-        rawOverrides
-      };
-    }
+            // استخراج بيانات كل شركة بنفس منطق الملف الأصلي تماماً
+            function extractDepartmentData(pubObj, monthKey) {
+                const defaultRes = {
+                    employees: [],
+                    assignments: {},
+                    version: "-",
+                    codes: JSON.parse(JSON.stringify(DEFAULT_CODES))
+                };
+                if (!pubObj || typeof pubObj !== "object") return defaultRes;
 
-    function lookupCodeInMap(mapObj, person, dayNum, monthKey) {
-      if (!mapObj || typeof mapObj !== "object") return undefined;
+                let codesList = JSON.parse(JSON.stringify(DEFAULT_CODES));
+                if (Array.isArray(pubObj.codes) && pubObj.codes.length > 0) {
+                    codesList = pubObj.codes.filter(c => c && c.code).map(c => {
+                        const codeUpper = String(c.code).toUpperCase().slice(0, 3);
+                        const validBg = /^#[0-9A-Fa-f]{6}$/.test(String(c.color)) ? String(c.color) : "#e2e8f0";
+                        const validText = /^#[0-9A-Fa-f]{6}$/.test(String(c.textColor || ""))
+                            ? String(c.textColor)
+                            : (codeUpper === "S" ? "#000000" : getContrastTextColor(validBg));
+                        const patNorm = (c.pattern === "stripes" || c.pattern === "v-stripes")
+                            ? "stripes"
+                            : (c.pattern === "grid" ? "grid" : "solid");
+                        return {
+                            code: codeUpper,
+                            label: String(c.label || codeUpper),
+                            color: validBg,
+                            textColor: validText,
+                            pattern: patNorm,
+                            core: CORE_COUNTER_CODES.includes(codeUpper)
+                        };
+                    });
+                }
 
-      const pad2 = String(dayNum).padStart(2, "0");
-      const dayKeys = [String(dayNum), pad2, `${monthKey}-${pad2}`];
-      const empId = person.id;
+                const rawEmps = Array.isArray(pubObj.employees)
+                    ? pubObj.employees
+                    : (pubObj.employees ? Object.values(pubObj.employees) : []);
 
-      for (const dk of dayKeys) {
-        if (Object.prototype.hasOwnProperty.call(mapObj, `${empId}_${dk}`)) return mapObj[`${empId}_${dk}`];
-        if (Object.prototype.hasOwnProperty.call(mapObj, `${empId}-${dk}`)) return mapObj[`${empId}-${dk}`];
-        if (Object.prototype.hasOwnProperty.call(mapObj, `${dk}_${empId}`)) return mapObj[`${dk}_${empId}`];
-      }
+                const employees = rawEmps
+                    .filter(emp => emp && typeof emp === "object")
+                    .map((emp, idx) => ({
+                        id: Number(emp.id) || (idx + 1),
+                        name: (emp.name && String(emp.name).trim()) ? String(emp.name).trim() : ("Employee " + (idx + 1))
+                    }));
 
-      const empSub = mapObj[empId];
-      if (empSub && typeof empSub === "object") {
-        for (const dk of dayKeys) {
-          if (Object.prototype.hasOwnProperty.call(empSub, dk)) {
-            return empSub[dk];
-          }
-        }
-      }
+                const monthRec = (pubObj.months && pubObj.months[monthKey]) ? pubObj.months[monthKey] : null;
+                if (!monthRec) {
+                    return { employees, assignments: {}, version: "Not Published", codes: codesList };
+                }
 
-      for (const dk of dayKeys) {
-        const daySub = mapObj[dk];
-        if (daySub && typeof daySub === "object" && Object.prototype.hasOwnProperty.call(daySub, empId)) {
-          return daySub[empId];
-        }
-      }
+                const cleanAssign = {};
+                if (monthRec.assignments && typeof monthRec.assignments === "object") {
+                    Object.keys(monthRec.assignments).forEach(empId => {
+                        const empRow = monthRec.assignments[empId];
+                        if (!empRow || typeof empRow !== "object") return;
+                        cleanAssign[String(empId)] = {};
+                        Object.keys(empRow).forEach(dKey => {
+                            if (empRow[dKey]) {
+                                cleanAssign[String(empId)][String(dKey)] = String(empRow[dKey]).trim().toUpperCase();
+                            }
+                        });
+                    });
+                }
 
-      return undefined;
-    }
+                return {
+                    employees,
+                    assignments: cleanAssign,
+                    version: monthRec.version ? String(monthRec.version) : "V1",
+                    codes: codesList
+                };
+            }
 
-    function normalizeCodeValue(rawVal) {
-      if (rawVal === undefined || rawVal === null) return "";
-      let val = rawVal;
-      if (typeof val === "object") {
-        val = val.code ?? val.shift ?? val.value ?? "";
-      }
-      const str = String(val).trim().toUpperCase();
-      if (str === "OFF" || str === "NONE" || str === "-") return "";
-      return str;
-    }
+            // دمج أكواد الألوان من HQ و EMS بحيث أي كود مخصص في أي شركة يظهر بلونه الدقيق
+            function mergeCodeDefinitions(hqCodes, emsCodes) {
+                const map = new Map();
+                hqCodes.forEach(c => map.set(c.code, c));
+                emsCodes.forEach(c => {
+                    if (!map.has(c.code)) map.set(c.code, c);
+                });
+                return Array.from(map.values());
+            }
 
-    function getFinalShift(teamData, person, dayNum, monthKey) {
-      const ovRaw = lookupCodeInMap(teamData.rawOverrides, person, dayNum, monthKey);
-      if (ovRaw !== undefined) {
-        return normalizeCodeValue(ovRaw);
-      }
-      const baseRaw = lookupCodeInMap(teamData.rawAssignments, person, dayNum, monthKey);
-      return normalizeCodeValue(baseRaw);
-    }
+            function renderAll() {
+                syncDateNavigatorInputs();
 
-    async function loadCombinedData() {
-      const monthKey = getMonthKey();
-      document.getElementById("statusInfo").textContent = "Loading...";
+                const hqData = extractDepartmentData(state.hqPublished, state.currentMonthKey);
+                const emsData = extractDepartmentData(state.emsPublished, state.currentMonthKey);
+                const mergedCodes = mergeCodeDefinitions(hqData.codes, emsData.codes);
 
-      const [hqSnap, emsSnap] = await Promise.all([
-        db.ref(`${HQ_DB_ROOT}/published`).once("value"),
-        db.ref(`${EMS_DB_ROOT}/published`).once("value")
-      ]);
+                const getCodeDef = (codeStr) => mergedCodes.find(c => c.code === codeStr) || {
+                    code: codeStr,
+                    label: codeStr,
+                    color: "#e2e8f0",
+                    textColor: "#000000",
+                    pattern: "solid",
+                    core: false
+                };
 
-      const hqParsed = parsePublishedTree(hqSnap.val(), monthKey);
-      const emsParsed = parsePublishedTree(emsSnap.val(), monthKey);
+                const userSub = document.getElementById("loggedUserSubtitle");
+                if (userSub && currentUsername) {
+                    userSub.textContent = `Signed in as: ${currentUsername} • HQ (${hqData.version}) + EMS (${emsData.version})`;
+                }
 
-      combinedData = { hq: hqParsed, ems: emsParsed };
+                const container = document.getElementById("unifiedRosterWrapper");
+                if (!container) return;
 
-      document.getElementById("statusInfo").textContent =
-        `HQ: ${hqParsed.staffList.length} staff (${hqParsed.version}) | EMS: ${emsParsed.staffList.length} staff (${emsParsed.version})`;
+                const empColW = 210;
+                const dayColW = 34;
+                const divW = 24;
+                const rowH = 30;
+                const legendCodeW = 42;
+                const legendLabelW = 185;
+                const BOLD_BORDER = "2.5px solid #000000";
 
-      renderRoster();
-    }
+                const daysList = getDaysInMonthKey(state.currentMonthKey);
+                const query = state.searchQuery.trim().toLowerCase();
 
-    function getDaysInMonth(year, month) {
-      const total = new Date(year, month + 1, 0).getDate();
-      const days = [];
-      for (let d = 1; d <= total; d++) {
-        const dt = new Date(year, month, d);
-        const dayIdx = dt.getDay();
-        days.push({
-          day: d,
-          name: DAY_NAMES[dayIdx],
-          isWeekend: (dayIdx === 5 || dayIdx === 6)
-        });
-      }
-      return days;
-    }
+                const showHQ = (state.teamFilter === "all" || state.teamFilter === "hq");
+                const showEMS = (state.teamFilter === "all" || state.teamFilter === "ems");
 
-    function renderRoster() {
-      const monthKey = getMonthKey();
-      const days = getDaysInMonth(selectedYear, selectedMonth);
-      const thead = document.getElementById("rosterHead");
-      const tbody = document.getElementById("rosterBody");
+                const visHQ = showHQ
+                    ? hqData.employees.filter(e => !query || e.name.toLowerCase().includes(query))
+                    : [];
+                const visEMS = showEMS
+                    ? emsData.employees.filter(e => !query || e.name.toLowerCase().includes(query))
+                    : [];
 
-      const monthLabel = `${MONTHS[selectedMonth]}-${String(selectedYear).slice(-2)} / COMBINED`;
+                // حساب العدادات اليومية الموحدة
+                const totalPerDay = {};
+                const codePerDay = {};
+                daysList.forEach(dObj => { totalPerDay[dObj.day] = 0; });
+                mergedCodes.forEach(c => {
+                    codePerDay[c.code] = {};
+                    daysList.forEach(dObj => { codePerDay[c.code][dObj.day] = 0; });
+                });
 
-      let h1 = `<tr><th class="thc-title-cell">THC / OCC (HQ + EMS)</th>`;
-      days.forEach(d => { h1 += `<th class="day-num-cell">${d.day}</th>`; });
-      h1 += `</tr>`;
+                const countEmployeeShifts = (empList, assignMap) => {
+                    empList.forEach(emp => {
+                        const empAssign = assignMap[String(emp.id)] || {};
+                        daysList.forEach(dObj => {
+                            const assigned = empAssign[String(dObj.day)];
+                            if (assigned) {
+                                if (ACTIVE_SHIFT_CODES.includes(assigned)) {
+                                    totalPerDay[dObj.day] = (totalPerDay[dObj.day] || 0) + 1;
+                                }
+                                if (!codePerDay[assigned]) codePerDay[assigned] = {};
+                                codePerDay[assigned][dObj.day] = (codePerDay[assigned][dObj.day] || 0) + 1;
+                            }
+                        });
+                    });
+                };
 
-      let h2 = `<tr><th class="month-ver-cell">${monthLabel}</th>`;
-      days.forEach(d => { h2 += `<th class="day-name-cell ${d.isWeekend ? 'wknd-hdr' : ''}">${d.name}</th>`; });
-      h2 += `</tr>`;
-      thead.innerHTML = h1 + h2;
+                if (showHQ) countEmployeeShifts(hqData.employees, hqData.assignments);
+                if (showEMS) countEmployeeShifts(emsData.employees, emsData.assignments);
 
-      let bodyHTML = "";
-      const activeTotals = {};
-      const shiftCounts = { A: {}, B: {}, C: {} };
+                const showDividerRow = (showHQ && showEMS);
+                const totalTbodyRows = visHQ.length + (showDividerRow ? 1 : 0) + visEMS.length + 1 + CORE_COUNTER_CODES.length;
 
-      days.forEach(d => {
-        activeTotals[d.day] = 0;
-        shiftCounts.A[d.day] = 0;
-        shiftCounts.B[d.day] = 0;
-        shiftCounts.C[d.day] = 0;
-      });
+                const legendRows = mergedCodes.map(c => ({ type: "code", codeObj: c }));
+                while (legendRows.length < totalTbodyRows) {
+                    legendRows.push({ type: "bottom-blue" });
+                }
 
-      // 1. HQ Team
-      combinedData.hq.staffList.forEach(person => {
-        bodyHTML += `<tr><td class="staff-name-cell">${person.name}</td>`;
-        days.forEach(d => {
-          const code = getFinalShift(combinedData.hq, person, d.day, monthKey);
-          if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
-          if (code === "A") shiftCounts.A[d.day]++;
-          if (code === "B") shiftCounts.B[d.day]++;
-          if (code === "C") shiftCounts.C[d.day]++;
-          bodyHTML += `<td class="shift-cell ${code ? 'code-' + code : ''}">${code}</td>`;
-        });
-        bodyHTML += `</tr>`;
-      });
+                const legendCount = legendRows.filter(r => r.type !== "bottom-blue").length;
+                const bottomBlueCount = legendRows.length - legendCount;
 
-      // 2. Divider Row
-      bodyHTML += `<tr class="team-divider-row"><td colspan="${days.length + 1}">--- EMS TEAM ---</td></tr>`;
+                const totalTableWidth = empColW + (daysList.length * dayColW) + divW + legendCodeW + legendLabelW;
+                const empStickyStyle = `width: ${empColW}px; min-width: ${empColW}px; max-width: ${empColW}px;`;
 
-      // 3. EMS Team
-      combinedData.ems.staffList.forEach(person => {
-        bodyHTML += `<tr><td class="staff-name-cell">${person.name}</td>`;
-        days.forEach(d => {
-          const code = getFinalShift(combinedData.ems, person, d.day, monthKey);
-          if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
-          if (code === "A") shiftCounts.A[d.day]++;
-          if (code === "B") shiftCounts.B[d.day]++;
-          if (code === "C") shiftCounts.C[d.day]++;
-          bodyHTML += `<td class="shift-cell ${code ? 'code-' + code : ''}">${code}</td>`;
-        });
-        bodyHTML += `</tr>`;
-      });
+                let html = `<table class="roster-grid text-center" style="width: ${totalTableWidth}px; border: ${BOLD_BORDER};">`;
 
-      // 4. Consolidated Summary Rows
-      bodyHTML += `<tr><td class="total-active-label">Total Active</td>`;
-      days.forEach(d => { bodyHTML += `<td class="total-active-val">${activeTotals[d.day]}</td>`; });
-      bodyHTML += `</tr>`;
+                // THEAD
+                html += `<thead>`;
+                html += `<tr style="border-bottom: ${BOLD_BORDER};">`;
+                html += `
+                    <th style="${empStickyStyle} background-color: #a3c9b8; border-right: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"
+                        class="sticky-emp-col py-1.5 px-2.5 text-center text-xs sm:text-sm font-black text-slate-950 tracking-wide">
+                        THC / OCC (HQ + EMS)
+                    </th>
+                `;
+                daysList.forEach(dObj => {
+                    html += `
+                        <th style="width: ${dayColW}px; min-width: ${dayColW}px; background-color: #74b3ce; border-bottom: ${BOLD_BORDER};" class="py-1 text-xs font-black text-slate-950">
+                            ${dObj.day}
+                        </th>
+                    `;
+                });
+                html += `
+                    <th rowspan="2" colspan="3"
+                        style="width: ${divW + legendCodeW + legendLabelW}px; background-color: #74b3ce; border-left: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};">
+                    </th>
+                `;
+                html += `</tr>`;
 
-      const summaryMeta = [
-        { code: "A", label: `A <span class="font-normal text-[9.5px]">(07:00-15:00)</span>`, cls: "code-A" },
-        { code: "B", label: `B <span class="font-normal text-[9.5px]">(15:00-23:00)</span>`, cls: "code-B" },
-        { code: "C", label: `C <span class="font-normal text-[9.5px]">(23:00-07:00)</span>`, cls: "code-C" }
-      ];
+                html += `<tr style="border-bottom: ${BOLD_BORDER};">`;
+                html += `
+                    <th style="${empStickyStyle} background-color: #ffffff; color: #1d4ed8; border-right: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"
+                        class="sticky-emp-col py-1 px-2.5 text-center text-xs font-black">
+                        ${escapeHtml(formatMonthBadge(state.currentMonthKey))} / COMBINED
+                    </th>
+                `;
+                daysList.forEach(dObj => {
+                    const bg = dObj.isWeekend ? "#dce6f2" : "#ffffff";
+                    html += `
+                        <th style="width: ${dayColW}px; min-width: ${dayColW}px; background-color: ${bg}; border-bottom: ${BOLD_BORDER};" class="py-1 text-[11px] font-extrabold text-slate-900">
+                            ${dObj.abbr}
+                        </th>
+                    `;
+                });
+                html += `</tr>`;
+                html += `</thead>`;
 
-      summaryMeta.forEach(sm => {
-        bodyHTML += `<tr><td class="count-row-label ${sm.cls}">${sm.label}</td>`;
-        days.forEach(d => { bodyHTML += `<td class="count-row-val">${shiftCounts[sm.code][d.day]}</td>`; });
-        bodyHTML += `</tr>`;
-      });
+                function renderRightSideCells(rowIdx) {
+                    let cells = "";
 
-      tbody.innerHTML = bodyHTML;
-    }
+                    if (rowIdx === 0 && legendCount > 0) {
+                        cells += `
+                            <td rowspan="${legendCount}"
+                                style="width: ${divW}px; min-width: ${divW}px; max-width: ${divW}px; background-color: #808080; border-left: ${BOLD_BORDER}; border-right: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};">
+                            </td>
+                        `;
+                    }
 
-    // CSV Export
-    document.getElementById("btnExportCSV").addEventListener("click", () => {
-      const monthKey = getMonthKey();
-      const days = getDaysInMonth(selectedYear, selectedMonth);
-      let csv = `Team,Staff,${days.map(d => d.day).join(",")}\n`;
-      combinedData.hq.staffList.forEach(p => {
-        const row = days.map(d => getFinalShift(combinedData.hq, p, d.day, monthKey));
-        csv += `HQ,"${p.name}",${row.join(",")}\n`;
-      });
-      combinedData.ems.staffList.forEach(p => {
-        const row = days.map(d => getFinalShift(combinedData.ems, p, d.day, monthKey));
-        csv += `EMS,"${p.name}",${row.join(",")}\n`;
-      });
-      const blob = new Blob([csv], { type: "text/csv" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `THC_OCC_Combined_${monthKey}.csv`;
-      a.click();
-    });
-  </script>
+                    if (rowIdx === legendCount && bottomBlueCount > 0) {
+                        cells += `
+                            <td rowspan="${bottomBlueCount}" colspan="3"
+                                style="background-color: #74b3ce; border-left: ${BOLD_BORDER}; border-top: ${BOLD_BORDER};">
+                            </td>
+                        `;
+                        return cells;
+                    }
+
+                    if (rowIdx > legendCount) {
+                        return "";
+                    }
+
+                    const item = legendRows[rowIdx];
+                    if (!item || !item.codeObj) return cells;
+
+                    const c = item.codeObj;
+                    const isLastLegendRow = (rowIdx === legendCount - 1);
+                    const bottomBorder = isLastLegendRow ? `border-bottom: ${BOLD_BORDER};` : "";
+                    const txtColor = resolveCodeTextColor(c);
+                    const patCls = getPatternClass(c.pattern);
+                    const crispCls = (patCls === "pattern-stripes" && txtColor.toLowerCase() === "#000000") ? "crisp-striped-text" : "";
+
+                    cells += `
+                        <td style="width: ${legendCodeW}px; min-width: ${legendCodeW}px; max-width: ${legendCodeW}px; height: ${rowH}px; background-color: ${escapeHtml(c.color)}; color: ${escapeHtml(txtColor)}; border-left: ${BOLD_BORDER}; ${bottomBorder}"
+                            class="px-0.5 text-center shift-letter ${patCls} ${crispCls}">
+                            ${escapeHtml(c.code)}
+                        </td>
+                        <td style="min-width: ${legendLabelW}px; height: ${rowH}px; background-color: #ffffff; white-space: nowrap; ${bottomBorder}"
+                            class="px-2.5 text-center text-xs font-extrabold text-slate-950 whitespace-nowrap">
+                            ${escapeHtml(c.label)}
+                        </td>
+                    `;
+                    return cells;
+                }
+
+                // TBODY
+                html += `<tbody>`;
+                let globalRowIndex = 0;
+
+                const renderEmpRow = (emp, assignMap, teamTag) => {
+                    const empAssign = assignMap[String(emp.id)] || {};
+                    html += `<tr>`;
+                    html += `
+                        <td style="${empStickyStyle} height: ${rowH}px; background-color: #ffffff; border-right: ${BOLD_BORDER};"
+                            class="sticky-emp-col px-2.5 text-left text-xs font-extrabold text-slate-900">
+                            <div class="flex items-center justify-between gap-1">
+                                <span class="truncate">${escapeHtml(emp.name)}</span>
+                                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 shrink-0">${teamTag}</span>
+                            </div>
+                        </td>
+                    `;
+
+                    daysList.forEach(dObj => {
+                        const codeStr = empAssign[String(dObj.day)] || "";
+                        if (!codeStr) {
+                            html += `
+                                <td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: #ffffff;"
+                                    class="p-0" title="${escapeHtml(emp.name)} — Day ${dObj.day}: OFF">
+                                </td>
+                            `;
+                        } else {
+                            const def = getCodeDef(codeStr);
+                            const txtColor = resolveCodeTextColor(def);
+                            const patCls = getPatternClass(def.pattern);
+                            const crispCls = (patCls === "pattern-stripes" && txtColor.toLowerCase() === "#000000") ? "crisp-striped-text" : "";
+
+                            html += `
+                                <td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: ${escapeHtml(def.color)}; color: ${escapeHtml(txtColor)};"
+                                    class="p-0 shift-letter ${patCls} ${crispCls}"
+                                    title="${escapeHtml(emp.name)} — Day ${dObj.day}: ${escapeHtml(def.code)} (${escapeHtml(def.label)})">
+                                    ${escapeHtml(def.code)}
+                                </td>
+                            `;
+                        }
+                    });
+
+                    html += renderRightSideCells(globalRowIndex);
+                    html += `</tr>`;
+                    globalRowIndex++;
+                };
+
+                // 1. HQ Team Rows
+                visHQ.forEach(emp => renderEmpRow(emp, hqData.assignments, "HQ"));
+
+                // 2. EMS Team Divider Row
+                if (showDividerRow) {
+                    html += `<tr style="border-top: 2px solid #000000; border-bottom: 2px solid #000000;">`;
+                    html += `
+                        <td style="${empStickyStyle} height: 24px; background-color: #dbeafe; color: #1e3a8a; border-right: ${BOLD_BORDER}; border-top: 2px solid #000000; border-bottom: 2px solid #000000;"
+                            class="sticky-emp-col px-2.5 text-center text-[11px] font-black tracking-wider">
+                            --- EMS TEAM ---
+                        </td>
+                        <td colspan="${daysList.length}" style="height: 24px; background-color: #eff6ff; color: #1e3a8a; border-top: 2px solid #000000; border-bottom: 2px solid #000000;"
+                            class="text-center text-[10.5px] font-extrabold tracking-widest">
+                            --- EMS TEAM (${escapeHtml(emsData.version)}) ---
+                        </td>
+                    `;
+                    html += renderRightSideCells(globalRowIndex);
+                    html += `</tr>`;
+                    globalRowIndex++;
+                }
+
+                // 3. EMS Team Rows
+                visEMS.forEach(emp => renderEmpRow(emp, emsData.assignments, "EMS"));
+
+                // 4. Consolidated Total Active Row (A, B, C, D)
+                html += `<tr style="border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};">`;
+                html += `
+                    <td style="${empStickyStyle} height: ${rowH}px; background-color: #a3c9b8; border-right: ${BOLD_BORDER}; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"
+                        class="sticky-emp-col px-2.5 text-center text-xs font-black text-slate-950">
+                        Total Active
+                    </td>
+                `;
+                daysList.forEach(dObj => {
+                    const count = totalPerDay[dObj.day] || 0;
+                    html += `
+                        <td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: #fecdd3; color: #991b1b; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"
+                            class="text-xs font-black">
+                            ${count}
+                        </td>
+                    `;
+                });
+                html += renderRightSideCells(globalRowIndex);
+                html += `</tr>`;
+                globalRowIndex++;
+
+                // 5. Consolidated Counter Rows (A, B, C)
+                CORE_COUNTER_CODES.forEach(codeStr => {
+                    const def = getCodeDef(codeStr);
+                    const txtColor = resolveCodeTextColor(def);
+                    const patCls = getPatternClass(def.pattern);
+                    const crispCls = (patCls === "pattern-stripes" && txtColor.toLowerCase() === "#000000") ? "crisp-striped-text" : "";
+                    const countsMap = codePerDay[codeStr] || {};
+
+                    html += `<tr>`;
+                    html += `
+                        <td style="${empStickyStyle} height: ${rowH}px; background-color: ${escapeHtml(def.color)}; color: ${escapeHtml(txtColor)}; border-right: ${BOLD_BORDER};"
+                            class="sticky-emp-col px-2.5 text-center ${patCls} ${crispCls}">
+                            <span class="shift-letter">${escapeHtml(def.code)}</span>
+                            <span class="text-[11px] font-bold opacity-85">(${escapeHtml(def.label)})</span>
+                        </td>
+                    `;
+                    daysList.forEach(dObj => {
+                        const val = countsMap[dObj.day] || 0;
+                        const isZeroAlert = (val === 0);
+                        const cellBg = isZeroAlert ? "#dc2626" : "#ffffff";
+                        const cellText = isZeroAlert ? "#ffffff" : "#0f172a";
+                        const cellFont = isZeroAlert ? "text-sm font-black" : "text-xs font-extrabold";
+
+                        html += `
+                            <td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: ${cellBg}; color: ${cellText};"
+                                class="${cellFont}">
+                                ${val}
+                            </td>
+                        `;
+                    });
+                    html += renderRightSideCells(globalRowIndex);
+                    html += `</tr>`;
+                    globalRowIndex++;
+                });
+
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+            }
+
+            function handlePrintPDF() {
+                const wrapper = document.getElementById("unifiedRosterWrapper");
+                if (wrapper) {
+                    const tableEl = wrapper.querySelector("table");
+                    const tableWidth = tableEl ? tableEl.offsetWidth : 1480;
+                    const printableLandscapePx = 1040;
+                    const scale = Math.min(1, Math.max(0.45, Number((printableLandscapePx / tableWidth).toFixed(3))));
+                    document.documentElement.style.setProperty("--print-scale", String(scale));
+                }
+                window.print();
+            }
+
+            function exportCombinedCSV() {
+                const hqData = extractDepartmentData(state.hqPublished, state.currentMonthKey);
+                const emsData = extractDepartmentData(state.emsPublished, state.currentMonthKey);
+                const daysList = getDaysInMonthKey(state.currentMonthKey);
+
+                let csv = `\uFEFF"Team","Staff (${formatMonthBadge(state.currentMonthKey)})",` + daysList.map(d => d.day).join(",") + "\n";
+                csv += `"","Day",` + daysList.map(d => d.abbr).join(",") + "\n";
+
+                hqData.employees.forEach(emp => {
+                    const empAssign = hqData.assignments[String(emp.id)] || {};
+                    const rowCells = daysList.map(d => `"${empAssign[String(d.day)] || ""}"`);
+                    csv += `"HQ","${emp.name.replace(/"/g, '""')}",${rowCells.join(",")}\n`;
+                });
+
+                emsData.employees.forEach(emp => {
+                    const empAssign = emsData.assignments[String(emp.id)] || {};
+                    const rowCells = daysList.map(d => `"${empAssign[String(d.day)] || ""}"`);
+                    csv += `"EMS","${emp.name.replace(/"/g, '""')}",${rowCells.join(",")}\n`;
+                });
+
+                const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `THC_OCC_Combined_Roster_${state.currentMonthKey}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            // Event Bindings
+            document.getElementById("monthPartSelect").addEventListener("change", function (e) {
+                const yearSel = document.getElementById("yearPartSelect");
+                const yStr = yearSel ? yearSel.value : "2026";
+                if (e.target.value) {
+                    state.currentMonthKey = normalizeRosterMonthKey(yStr + "-" + e.target.value);
+                    renderAll();
+                }
+            });
+
+            document.getElementById("yearPartSelect").addEventListener("change", function (e) {
+                const yStr = e.target.value;
+                const monthSel = document.getElementById("monthPartSelect");
+                const prevMonthVal = monthSel ? monthSel.value : "12";
+                if (yStr) {
+                    const targetMonth = yStr === "2026" ? "12" : prevMonthVal;
+                    state.currentMonthKey = normalizeRosterMonthKey(yStr + "-" + targetMonth);
+                    renderAll();
+                }
+            });
+
+            document.getElementById("teamFilterSelect").addEventListener("change", function (e) {
+                state.teamFilter = e.target.value;
+                renderAll();
+            });
+
+            document.getElementById("empSearchInput").addEventListener("input", function (e) {
+                state.searchQuery = e.target.value;
+                renderAll();
+            });
+
+            document.body.addEventListener("click", function (e) {
+                const actionEl = e.target.closest("[data-action]");
+                if (!actionEl) return;
+                const action = actionEl.dataset.action;
+
+                if (action === "sign-out" && authInstance) {
+                    authInstance.signOut();
+                } else if (action === "prev-month") {
+                    if (state.currentMonthKey === "2026-12") return;
+                    const { year, monthIndex } = parseMonthKey(state.currentMonthKey);
+                    const prevDate = new Date(year, monthIndex - 1, 1);
+                    const candidateKey = prevDate.getFullYear() + "-" + String(prevDate.getMonth() + 1).padStart(2, "0");
+                    if (candidateKey >= "2026-12") {
+                        state.currentMonthKey = normalizeRosterMonthKey(candidateKey);
+                        renderAll();
+                    }
+                } else if (action === "next-month") {
+                    if (state.currentMonthKey === "2030-12") return;
+                    const { year, monthIndex } = parseMonthKey(state.currentMonthKey);
+                    const nextDate = new Date(year, monthIndex + 1, 1);
+                    const candidateKey = nextDate.getFullYear() + "-" + String(nextDate.getMonth() + 1).padStart(2, "0");
+                    if (candidateKey <= "2030-12") {
+                        state.currentMonthKey = normalizeRosterMonthKey(candidateKey);
+                        renderAll();
+                    }
+                } else if (action === "print-roster") {
+                    handlePrintPDF();
+                } else if (action === "export-csv") {
+                    exportCombinedCSV();
+                }
+            });
+
+            document.getElementById("firebaseLoginForm").addEventListener("submit", function (e) {
+                e.preventDefault();
+                const rawUser = document.getElementById("gateUsernameInput").value.trim().toLowerCase();
+                const pass = document.getElementById("gatePasswordInput").value;
+                const errEl = document.getElementById("gateLoginError");
+                errEl.classList.add("hidden");
+
+                if (!rawUser || !pass || !authInstance) return;
+                const email = rawUser.includes("@") ? rawUser : (rawUser + AUTH_DOMAIN_SUFFIX);
+
+                authInstance.signInWithEmailAndPassword(email, pass).catch(function () {
+                    errEl.textContent = "Invalid username or password (or verify apiKey).";
+                    errEl.classList.remove("hidden");
+                });
+            });
+
+            function bootCombinedApp() {
+                const app = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
+                authInstance = firebase.auth(app);
+                dbInstance = firebase.database(app);
+
+                dbInstance.ref(".info/connected").on("value", function (snap) {
+                    updateStatusBadge(snap.val() ? "connected" : "offline");
+                });
+
+                authInstance.onAuthStateChanged(function (user) {
+                    if (!user) {
+                        currentUsername = "";
+                        document.getElementById("loginGateOverlay").classList.remove("hidden");
+                        document.getElementById("protectedAppShell").classList.add("hidden");
+                        return;
+                    }
+
+                    currentUsername = (user.email || "").split("@")[0].toLowerCase();
+                    document.getElementById("loginGateOverlay").classList.add("hidden");
+                    document.getElementById("protectedAppShell").classList.remove("hidden");
+
+                    // استماع لحظي (Real-time) للنسخة المعتمدة لكل من HQ و EMS
+                    dbInstance.ref(HQ_DB_PATH + "/published").on("value", function (snap) {
+                        state.hqPublished = snap.val();
+                        renderAll();
+                    });
+
+                    dbInstance.ref(EMS_DB_PATH + "/published").on("value", function (snap) {
+                        state.emsPublished = snap.val();
+                        renderAll();
+                    });
+
+                    renderAll();
+                });
+            }
+
+            state.currentMonthKey = normalizeRosterMonthKey(state.currentMonthKey);
+            populateMonthSelectDropdown("2026");
+            bootCombinedApp();
+        })();
+    </script>
 </body>
 </html>
