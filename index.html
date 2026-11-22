@@ -102,6 +102,17 @@
       background-color: #ffffff;
     }
 
+    .team-divider-row td {
+      background-color: #dbeafe !important;
+      color: #1e3a8a !important;
+      font-weight: 800 !important;
+      font-size: 10.5px !important;
+      height: 22px !important;
+      letter-spacing: 0.5px;
+      border-top: 2px solid #000000 !important;
+      border-bottom: 2px solid #000000 !important;
+    }
+
     .shift-cell {
       width: 28px;
       min-width: 28px;
@@ -112,11 +123,6 @@
       transition: filter 0.1s;
     }
     .shift-cell:hover { filter: brightness(0.92); }
-    .shift-cell.selected-cell {
-      outline: 2px solid #2563eb;
-      outline-offset: -2px;
-      z-index: 5;
-    }
 
     /* Summary Rows */
     .total-active-label {
@@ -273,7 +279,7 @@
       }
       .roster-wrapper {
         border: 2.5px solid #000000 !important;
-        zoom: 0.78;
+        zoom: 0.74;
       }
       table.roster-table {
         border-collapse: separate !important;
@@ -296,6 +302,10 @@
       }
       .total-active-label, .total-active-val {
         border-top: 2.5px solid #000000 !important;
+      }
+      .team-divider-row td {
+        border-top: 2px solid #000000 !important;
+        border-bottom: 2px solid #000000 !important;
       }
     }
   </style>
@@ -340,18 +350,19 @@
         <select id="monthSelect" class="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white"></select>
         <select id="yearSelect" class="border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white"></select>
 
-        <div class="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
+        <div id="verBox" class="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
           <span class="text-xs font-bold text-slate-600">Ver:</span>
           <input type="text" id="versionInput" value="V1" class="w-12 text-xs font-bold text-center border border-slate-300 rounded px-1 py-0.5 bg-white" />
         </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-1.5">
-        <button id="btnAddStaff" class="sup-only hidden bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+ Staff</button>
-        <button id="btnUndo" class="sup-only hidden bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-2.5 py-1.5 rounded-lg" title="Undo">↩ Undo</button>
-        <button id="btnRedo" class="sup-only hidden bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-2.5 py-1.5 rounded-lg" title="Redo">↪ Redo</button>
-        <button id="btnSyncLeaves" class="sup-only hidden bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">⇄ Sync Leaves</button>
-        <button id="btnPublish" class="sup-only hidden bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm">📢 Publish & Approve</button>
+        <button id="btnAddStaff" class="sup-only edit-only hidden bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+ Staff</button>
+        <button id="btnUndo" class="sup-only edit-only hidden bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-2.5 py-1.5 rounded-lg" title="Undo">↩ Undo</button>
+        <button id="btnRedo" class="sup-only edit-only hidden bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-2.5 py-1.5 rounded-lg" title="Redo">↪ Redo</button>
+        <button id="btnSyncLeaves" class="sup-only edit-only hidden bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">⇄ Sync Leaves</button>
+        <button id="btnPublish" class="sup-only edit-only hidden bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm">📢 Publish & Approve</button>
+        <button id="btnCombined" class="sup-only hidden bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm">📊 Combined HQ + EMS</button>
         <button id="btnReceipts" class="sup-only hidden bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg">👁 Receipts</button>
         <button id="btnAudit" class="sup-only hidden bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg">📜 Audit</button>
         <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">🖨 Print / PDF</button>
@@ -362,7 +373,7 @@
     </div>
 
     <!-- Quick Shift Brush Bar (Supervisors Only) -->
-    <div id="brushBar" class="no-print sup-only hidden bg-white rounded-xl shadow-sm border border-slate-200 p-2 mb-3 flex flex-wrap items-center gap-1.5">
+    <div id="brushBar" class="no-print sup-only edit-only hidden bg-white rounded-xl shadow-sm border border-slate-200 p-2 mb-3 flex flex-wrap items-center gap-1.5">
       <span class="text-xs font-bold text-slate-600 mr-1">Quick Paint:</span>
       <button data-code="" class="brush-btn px-2.5 py-1 rounded text-xs font-bold border border-slate-300 bg-white">Eraser (Clear)</button>
       <button data-code="A" class="brush-btn code-A px-2.5 py-1 rounded text-xs font-bold border border-black">A</button>
@@ -447,6 +458,8 @@
     const db = firebase.database();
 
     const DB_ROOT = "monthly_roster_occ_thc";
+    const HQ_DB_ROOT = "monthly_roster_occ_thc";
+    const EMS_DB_ROOT = "monthly_roster_occ_ems";
     const LEAVE_DB_ROOT = "leave_planner_2027";
     const ROSTER_TITLE = "THC / OCC HQ";
     const ADMIN_SUPERVISORS = ["fawari", "aalharb", "malreheili", "aalshalawi", "abasaeed", "asofta"];
@@ -472,9 +485,11 @@
     let currentUser = null;
     let currentUsername = "";
     let isSupervisor = false;
+    let isCombinedMode = false;
     let selectedMonth = new Date().getMonth();
     let selectedYear = new Date().getFullYear();
     let rosterData = { version: "V1", staff: [], assignments: {} };
+    let combinedData = { hq: { staff: [], assignments: {}, version: "V1" }, ems: { staff: [], assignments: {}, version: "V1" } };
     let activeBrush = null;
     let isMouseDown = false;
     let undoStack = [];
@@ -513,6 +528,29 @@
 
     monthSelect.addEventListener("change", () => { selectedMonth = parseInt(monthSelect.value); loadMonthData(); });
     yearSelect.addEventListener("change", () => { selectedYear = parseInt(yearSelect.value); loadMonthData(); });
+
+    // Toggle Combined HQ + EMS View
+    document.getElementById("btnCombined").addEventListener("click", () => {
+      if (!isSupervisor) return;
+      isCombinedMode = !isCombinedMode;
+      const btn = document.getElementById("btnCombined");
+      if (isCombinedMode) {
+        btn.textContent = "↩ Back to HQ Draft";
+        btn.className = "sup-only bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm";
+        document.getElementById("modeBadge").textContent = "Combined Official (HQ + EMS)";
+        document.getElementById("modeBadge").className = "px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800";
+        document.querySelectorAll(".edit-only").forEach(el => el.classList.add("hidden"));
+        document.getElementById("verBox").classList.add("hidden");
+      } else {
+        btn.textContent = "📊 Combined HQ + EMS";
+        btn.className = "sup-only bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm";
+        document.getElementById("modeBadge").textContent = "Draft Mode";
+        document.getElementById("modeBadge").className = "px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800";
+        document.querySelectorAll(".edit-only").forEach(el => el.classList.remove("hidden"));
+        document.getElementById("verBox").classList.remove("hidden");
+      }
+      loadMonthData();
+    });
 
     // Auth Handling
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
@@ -581,10 +619,27 @@
       return `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
     }
 
-    function loadMonthData() {
+    async function loadMonthData() {
       const key = getMonthKey();
+      db.ref(`${HQ_DB_ROOT}/draft/${key}`).off();
+      db.ref(`${HQ_DB_ROOT}/published/${key}`).off();
+
+      if (isCombinedMode && isSupervisor) {
+        const [hqSnap, emsSnap] = await Promise.all([
+          db.ref(`${HQ_DB_ROOT}/published/${key}`).once("value"),
+          db.ref(`${EMS_DB_ROOT}/published/${key}`).once("value")
+        ]);
+        const hqVal = hqSnap.val() || { version: "N/A", staff: [], assignments: {} };
+        const emsVal = emsSnap.val() || { version: "N/A", staff: [], assignments: {} };
+        combinedData = {
+          hq: { version: hqVal.version || "V1", staff: hqVal.staff || [], assignments: hqVal.assignments || {} },
+          ems: { version: emsVal.version || "V1", staff: emsVal.staff || [], assignments: emsVal.assignments || {} }
+        };
+        renderRoster();
+        return;
+      }
+
       const path = isSupervisor ? `${DB_ROOT}/draft/${key}` : `${DB_ROOT}/published/${key}`;
-      db.ref(path).off();
       db.ref(path).on("value", snap => {
         const val = snap.val();
         if (val) {
@@ -610,7 +665,7 @@
     }
 
     function saveDraft(pushUndo = true) {
-      if (!isSupervisor) return;
+      if (!isSupervisor || isCombinedMode) return;
       if (pushUndo) {
         undoStack.push(JSON.stringify(rosterData));
         if (undoStack.length > 30) undoStack.shift();
@@ -621,7 +676,7 @@
     }
 
     document.getElementById("versionInput").addEventListener("change", (e) => {
-      if (!isSupervisor) return;
+      if (!isSupervisor || isCombinedMode) return;
       rosterData.version = e.target.value.trim() || "V1";
       saveDraft();
       renderRoster();
@@ -662,10 +717,13 @@
       const thead = document.getElementById("rosterHead");
       const tbody = document.getElementById("rosterBody");
 
-      const monthLabel = `${MONTHS[selectedMonth]}-${String(selectedYear).slice(-2)} / ${rosterData.version}`;
+      const headerTitle = isCombinedMode ? "THC / OCC (HQ + EMS)" : ROSTER_TITLE;
+      const monthLabel = isCombinedMode
+        ? `${MONTHS[selectedMonth]}-${String(selectedYear).slice(-2)} / COMBINED`
+        : `${MONTHS[selectedMonth]}-${String(selectedYear).slice(-2)} / ${rosterData.version}`;
 
       // Header Row 1: Title + Day Numbers
-      let h1 = `<tr><th class="thc-title-cell">${ROSTER_TITLE}</th>`;
+      let h1 = `<tr><th class="thc-title-cell">${headerTitle}</th>`;
       days.forEach(d => {
         h1 += `<th class="day-num-cell">${d.day}</th>`;
       });
@@ -679,7 +737,6 @@
       h2 += `</tr>`;
       thead.innerHTML = h1 + h2;
 
-      // Body: Staff Rows
       let bodyHTML = "";
       const activeTotals = {};
       const shiftCounts = { A: {}, B: {}, C: {} };
@@ -691,32 +748,66 @@
         shiftCounts.C[d.day] = 0;
       });
 
-      rosterData.staff.forEach((person, idx) => {
-        const pAssign = rosterData.assignments[person.id] || {};
-        bodyHTML += `<tr>`;
-        bodyHTML += `<td class="staff-name-cell">
-          <div class="flex items-center justify-between">
-            <span>${person.name}</span>
-            ${isSupervisor ? `<button onclick="openEditStaff(${idx})" class="no-print text-slate-400 hover:text-blue-600 ml-2 text-[10px]" title="Edit">✎</button>` : ""}
-          </div>
-        </td>`;
-
-        days.forEach(d => {
-          const code = pAssign[d.day] || "";
-          if (["A", "B", "C", "D"].includes(code)) {
-            activeTotals[d.day]++;
-          }
-          if (code === "A") shiftCounts.A[d.day]++;
-          if (code === "B") shiftCounts.B[d.day]++;
-          if (code === "C") shiftCounts.C[d.day]++;
-
-          bodyHTML += `<td class="shift-cell ${code ? 'code-' + code : ''}"
-            data-staff="${person.id}" data-day="${d.day}"
-            onmousedown="handleCellDown('${person.id}', ${d.day})"
-            onmouseenter="handleCellEnter('${person.id}', ${d.day})">${code}</td>`;
+      if (isCombinedMode) {
+        // 1. Render HQ Published Staff
+        combinedData.hq.staff.forEach(person => {
+          const pAssign = combinedData.hq.assignments[person.id] || {};
+          bodyHTML += `<tr><td class="staff-name-cell"><span>${person.name}</span></td>`;
+          days.forEach(d => {
+            const code = pAssign[d.day] || "";
+            if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
+            if (code === "A") shiftCounts.A[d.day]++;
+            if (code === "B") shiftCounts.B[d.day]++;
+            if (code === "C") shiftCounts.C[d.day]++;
+            bodyHTML += `<td class="shift-cell ${code ? 'code-' + code : ''}">${code}</td>`;
+          });
+          bodyHTML += `</tr>`;
         });
-        bodyHTML += `</tr>`;
-      });
+
+        // 2. Divider Row: --- EMS TEAM ---
+        bodyHTML += `<tr class="team-divider-row"><td colspan="${days.length + 1}">--- EMS TEAM ---</td></tr>`;
+
+        // 3. Render EMS Published Staff
+        combinedData.ems.staff.forEach(person => {
+          const pAssign = combinedData.ems.assignments[person.id] || {};
+          bodyHTML += `<tr><td class="staff-name-cell"><span>${person.name}</span></td>`;
+          days.forEach(d => {
+            const code = pAssign[d.day] || "";
+            if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
+            if (code === "A") shiftCounts.A[d.day]++;
+            if (code === "B") shiftCounts.B[d.day]++;
+            if (code === "C") shiftCounts.C[d.day]++;
+            bodyHTML += `<td class="shift-cell ${code ? 'code-' + code : ''}">${code}</td>`;
+          });
+          bodyHTML += `</tr>`;
+        });
+      } else {
+        // Normal Single-Company Roster
+        rosterData.staff.forEach((person, idx) => {
+          const pAssign = rosterData.assignments[person.id] || {};
+          bodyHTML += `<tr>`;
+          bodyHTML += `<td class="staff-name-cell">
+            <div class="flex items-center justify-between">
+              <span>${person.name}</span>
+              ${isSupervisor ? `<button onclick="openEditStaff(${idx})" class="no-print text-slate-400 hover:text-blue-600 ml-2 text-[10px]" title="Edit">✎</button>` : ""}
+            </div>
+          </td>`;
+
+          days.forEach(d => {
+            const code = pAssign[d.day] || "";
+            if (["A", "B", "C", "D"].includes(code)) activeTotals[d.day]++;
+            if (code === "A") shiftCounts.A[d.day]++;
+            if (code === "B") shiftCounts.B[d.day]++;
+            if (code === "C") shiftCounts.C[d.day]++;
+
+            bodyHTML += `<td class="shift-cell ${code ? 'code-' + code : ''}"
+              data-staff="${person.id}" data-day="${d.day}"
+              onmousedown="handleCellDown('${person.id}', ${d.day})"
+              onmouseenter="handleCellEnter('${person.id}', ${d.day})">${code}</td>`;
+          });
+          bodyHTML += `</tr>`;
+        });
+      }
 
       // Summary Row: Total Active (A, B, C, D only)
       bodyHTML += `<tr><td class="total-active-label">Total Active</td>`;
@@ -744,7 +835,7 @@
     }
 
     function applyShift(staffId, day, code) {
-      if (!isSupervisor) return;
+      if (!isSupervisor || isCombinedMode) return;
       if (!rosterData.assignments[staffId]) rosterData.assignments[staffId] = {};
       if (code === "") {
         delete rosterData.assignments[staffId][day];
@@ -755,7 +846,7 @@
     }
 
     window.handleCellDown = function(staffId, day) {
-      if (!isSupervisor) return;
+      if (!isSupervisor || isCombinedMode) return;
       isMouseDown = true;
       if (activeBrush !== null) {
         saveDraft();
@@ -770,7 +861,7 @@
     };
 
     window.handleCellEnter = function(staffId, day) {
-      if (!isSupervisor || !isMouseDown || activeBrush === null) return;
+      if (!isSupervisor || isCombinedMode || !isMouseDown || activeBrush === null) return;
       applyShift(staffId, day, activeBrush);
     };
 
@@ -899,14 +990,26 @@
     document.getElementById("btnExportCSV").addEventListener("click", () => {
       const days = getDaysInMonth(selectedYear, selectedMonth);
       let csv = `Staff,${days.map(d => d.day).join(",")}\n`;
-      rosterData.staff.forEach(p => {
-        const row = days.map(d => (rosterData.assignments[p.id] && rosterData.assignments[p.id][d.day]) || "");
-        csv += `"${p.name}",${row.join(",")}\n`;
-      });
+      if (isCombinedMode) {
+        combinedData.hq.staff.forEach(p => {
+          const row = days.map(d => (combinedData.hq.assignments[p.id] && combinedData.hq.assignments[p.id][d.day]) || "");
+          csv += `"${p.name} (HQ)",${row.join(",")}\n`;
+        });
+        combinedData.ems.staff.forEach(p => {
+          const row = days.map(d => (combinedData.ems.assignments[p.id] && combinedData.ems.assignments[p.id][d.day]) || "");
+          csv += `"${p.name} (EMS)",${row.join(",")}\n`;
+        });
+      } else {
+        rosterData.staff.forEach(p => {
+          const row = days.map(d => (rosterData.assignments[p.id] && rosterData.assignments[p.id][d.day]) || "");
+          csv += `"${p.name}",${row.join(",")}\n`;
+        });
+      }
       const blob = new Blob([csv], { type: "text/csv" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `${ROSTER_TITLE.replace(/\s+/g, "_")}_${getMonthKey()}.csv`;
+      const filePrefix = isCombinedMode ? "THC_OCC_Combined" : ROSTER_TITLE.replace(/\s+/g, "_");
+      a.download = `${filePrefix}_${getMonthKey()}.csv`;
       a.click();
     });
   </script>
