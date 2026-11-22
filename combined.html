@@ -407,7 +407,6 @@
     const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const DAY_NAMES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 
-    // يبدأ حصراً من ديسمبر 2026 فصاعداً
     let selectedMonth = 11; 
     let selectedYear = 2026;
     let combinedData = {
@@ -415,7 +414,6 @@
       ems: { version: "V1", staffList: [], rawAssignments: {}, rawOverrides: {} }
     };
 
-    // Render Legend
     const legendContainer = document.getElementById("legendContainer");
     LEGEND_ITEMS.forEach(item => {
       const row = document.createElement("div");
@@ -427,13 +425,12 @@
       legendContainer.appendChild(row);
     });
 
-    // Populate Month & Year Selectors (Starting Dec 2026)
     const monthSelect = document.getElementById("monthSelect");
     const yearSelect = document.getElementById("yearSelect");
 
     function populateMonthOptions() {
       monthSelect.innerHTML = "";
-      const startMonth = (selectedYear === 2026) ? 11 : 0; // في 2026 يبدأ من ديسمبر (11) فقط
+      const startMonth = (selectedYear === 2026) ? 11 : 0;
       if (selectedMonth < startMonth) selectedMonth = startMonth;
       for (let idx = startMonth; idx < 12; idx++) {
         const opt = document.createElement("option");
@@ -464,7 +461,6 @@
     });
     document.getElementById("btnRefresh").addEventListener("click", loadCombinedData);
 
-    // Auth Handling
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const rawUser = document.getElementById("loginUser").value.trim().toLowerCase();
@@ -517,9 +513,7 @@
       }
 
       const rawEmployees = pubObj.employees || pubObj.staff || [];
-      const empEntries = Array.isArray(rawEmployees)
-        ? rawEmployees.map((emp, idx) => [emp && emp.id ? String(emp.id) : String(idx), emp])
-        : Object.entries(rawEmployees);
+      const empValues = Array.isArray(rawEmployees) ? rawEmployees : Object.values(rawEmployees);
 
       const monthsNode = pubObj.months || {};
       const monthData = monthsNode[monthKey];
@@ -531,18 +525,13 @@
       const rawAssignments = monthData.assignments || {};
       const rawOverrides = monthData.overrides || {};
 
-      const staffList = empEntries
-        .filter(([, emp]) => emp !== null && emp !== undefined)
-        .map(([keyId, emp]) => {
-          const isObj = typeof emp === "object";
-          const empName = isObj ? (emp.name || emp.fullName || keyId) : String(emp);
-          const empId = isObj && emp.id !== undefined ? String(emp.id) : String(keyId);
-          return {
-            id: empId,
-            keyId: String(keyId),
-            name: empName
-          };
-        });
+      const staffList = empValues
+        .filter(emp => emp !== null && emp !== undefined && typeof emp === "object")
+        .map(emp => ({
+          id: String(emp.id),
+          name: emp.name || emp.fullName || String(emp.id),
+          username: emp.username ? String(emp.username) : ""
+        }));
 
       return {
         version: monthData.version || "V1",
@@ -552,47 +541,32 @@
       };
     }
 
-    // استخراج قيمة الشفت بدقة سواء كان التخزين (موظف -> يوم) أو (يوم -> موظف) أو (معرف_يوم)
     function lookupCodeInMap(mapObj, person, dayNum, monthKey) {
       if (!mapObj || typeof mapObj !== "object") return undefined;
 
       const pad2 = String(dayNum).padStart(2, "0");
       const dayKeys = [String(dayNum), pad2, `${monthKey}-${pad2}`];
-      const empKeys = [person.id, person.keyId, person.name].filter(Boolean);
+      const empId = person.id;
 
-      // الحالة 1: مفتاح مركب مثل "empId_1" أو "empId-2026-12-01" أو "1_empId"
-      for (const ek of empKeys) {
-        for (const dk of dayKeys) {
-          const combo1 = `${ek}_${dk}`;
-          const combo2 = `${ek}-${dk}`;
-          const combo3 = `${dk}_${ek}`;
-          if (Object.prototype.hasOwnProperty.call(mapObj, combo1)) return mapObj[combo1];
-          if (Object.prototype.hasOwnProperty.call(mapObj, combo2)) return mapObj[combo2];
-          if (Object.prototype.hasOwnProperty.call(mapObj, combo3)) return mapObj[combo3];
-        }
-      }
-
-      // الحالة 2: الموظف أولاً ثم اليوم -> mapObj[empId][day]
-      for (const ek of empKeys) {
-        const sub = mapObj[ek];
-        if (sub && typeof sub === "object") {
-          for (const dk of dayKeys) {
-            if (Object.prototype.hasOwnProperty.call(sub, dk)) {
-              return sub[dk];
-            }
-          }
-        }
-      }
-
-      // الحالة 3: اليوم أولاً ثم الموظف -> mapObj[day][empId]
       for (const dk of dayKeys) {
-        const sub = mapObj[dk];
-        if (sub && typeof sub === "object") {
-          for (const ek of empKeys) {
-            if (Object.prototype.hasOwnProperty.call(sub, ek)) {
-              return sub[ek];
-            }
+        if (Object.prototype.hasOwnProperty.call(mapObj, `${empId}_${dk}`)) return mapObj[`${empId}_${dk}`];
+        if (Object.prototype.hasOwnProperty.call(mapObj, `${empId}-${dk}`)) return mapObj[`${empId}-${dk}`];
+        if (Object.prototype.hasOwnProperty.call(mapObj, `${dk}_${empId}`)) return mapObj[`${dk}_${empId}`];
+      }
+
+      const empSub = mapObj[empId];
+      if (empSub && typeof empSub === "object") {
+        for (const dk of dayKeys) {
+          if (Object.prototype.hasOwnProperty.call(empSub, dk)) {
+            return empSub[dk];
           }
+        }
+      }
+
+      for (const dk of dayKeys) {
+        const daySub = mapObj[dk];
+        if (daySub && typeof daySub === "object" && Object.prototype.hasOwnProperty.call(daySub, empId)) {
+          return daySub[empId];
         }
       }
 
@@ -611,12 +585,10 @@
     }
 
     function getFinalShift(teamData, person, dayNum, monthKey) {
-      // التحقق أولاً من overrides حتى لو كانت القيمة "" (مسح شفت)
       const ovRaw = lookupCodeInMap(teamData.rawOverrides, person, dayNum, monthKey);
       if (ovRaw !== undefined) {
         return normalizeCodeValue(ovRaw);
       }
-      // ثم الرجوع إلى assignments
       const baseRaw = lookupCodeInMap(teamData.rawAssignments, person, dayNum, monthKey);
       return normalizeCodeValue(baseRaw);
     }
