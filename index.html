@@ -1396,7 +1396,7 @@
                     daysList.forEach(dObj => {
                         const assigned = empAssign[String(dObj.day)];
                         if (assigned) {
-                            totalPerDay[dObj.day] = (totalPerDay[dObj.day] || 0) + 1;
+                            if (["A", "B", "C", "D"].includes(assigned)) { totalPerDay[dObj.day] = (totalPerDay[dObj.day] || 0) + 1; }
                             if (!codePerDay[assigned]) codePerDay[assigned] = {};
                             codePerDay[assigned][dObj.day] = (codePerDay[assigned][dObj.day] || 0) + 1;
                         }
