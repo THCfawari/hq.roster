@@ -6,6 +6,7 @@
     <title>Monthly Shift Roster — OCC / THC HQ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Firebase Compat SDK v10.7.1 -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -46,6 +47,7 @@
             .shift-letter { font-size: 13px; }
         }
 
+        /* Cell Fill Patterns */
         .pattern-stripes {
             background-image: repeating-linear-gradient(
                 90deg,
@@ -65,9 +67,11 @@
             text-shadow: 0 0 2px rgba(255, 255, 255, 0.98), 0 0 1px rgba(255, 255, 255, 0.98);
         }
 
+        /* Synced Leave & Alert Indicators */
         .synced-leave-cell { box-shadow: inset 0 3px 0 0 #2563eb; }
         .alert-ring-cell { outline: 2.5px solid #dc2626; outline-offset: -2.5px; }
 
+        /* Drag & Drop Visual States */
         .toolbar-arranging [data-toolbar-btn] {
             cursor: grab !important;
             outline: 2px dashed #2563eb;
@@ -151,29 +155,29 @@
 
         <!-- Top Application Bar -->
         <header class="bg-white border-b border-slate-300 sticky top-0 z-30 shadow-xs no-print">
-            <div class="max-w-[1840px] mx-auto px-3 sm:px-6 py-2 sm:py-2.5 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
-                <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sky-700 text-white flex items-center justify-center shadow-xs shrink-0">
+            <div class="max-w-[1840px] mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded-xl bg-sky-700 text-white flex items-center justify-center shadow-xs shrink-0">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                             <line x1="16" y1="2" x2="16" y2="6"></line>
                             <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                            <line x1="3" y="10" x2="21" y2="10"></line>
                             <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path>
                         </svg>
                     </div>
                     <div class="min-w-0">
-                        <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <h1 id="topBarTitle" class="text-sm sm:text-lg font-extrabold text-slate-900 truncate">Monthly Shift Roster — OCC / THC HQ</h1>
-                            <span id="cloudStatusBadge" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <span id="cloudStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                                 <span id="cloudStatusDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                                 <span id="cloudStatusText">Connecting...</span>
                             </span>
-                            <span id="publishStateBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                            <span id="publishStateBadge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
                                 ● Published Official
                             </span>
-                            <span id="monthLockedBadge" class="hidden inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                                🔒 Locked
+                            <span id="monthLockedBadge" class="hidden inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                🔒 Month Locked
                             </span>
                         </div>
                         <p id="loggedUserSubtitle" class="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate">Unified Shift Schedule • Dec 2026 – Dec 2030</p>
@@ -188,10 +192,10 @@
                             ◀
                         </button>
                         <select id="monthPartSelect" aria-label="Select Month"
-                            class="h-7 px-1.5 sm:px-2 rounded-lg bg-white border border-slate-200 text-xs font-extrabold text-blue-700 focus:outline-none cursor-pointer">
+                            class="h-7 px-2 rounded-lg bg-white border border-slate-200 text-xs font-extrabold text-blue-700 focus:outline-none cursor-pointer">
                         </select>
                         <select id="yearPartSelect" aria-label="Select Year"
-                            class="h-7 px-1.5 sm:px-2 rounded-lg bg-white border border-slate-200 text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer">
+                            class="h-7 px-2 rounded-lg bg-white border border-slate-200 text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer">
                             <option value="2026">2026</option>
                             <option value="2027">2027</option>
                             <option value="2028">2028</option>
@@ -203,13 +207,13 @@
                             ▶
                         </button>
                         <button type="button" data-action="jump-today"
-                            class="h-7 px-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-extrabold transition cursor-pointer">
+                            class="h-7 px-2.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-extrabold transition cursor-pointer">
                             Today
                         </button>
                     </div>
 
-                    <div class="inline-flex items-center gap-1 bg-white px-2 py-1 rounded-xl border border-slate-300">
-                        <input type="text" id="empSearchInput" placeholder="Search..." aria-label="Search Staff Name"
+                    <div class="inline-flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-slate-300">
+                        <input type="text" id="empSearchInput" placeholder="Search name..." aria-label="Search Staff Name"
                             class="w-20 sm:w-28 px-1 py-0.5 text-xs font-semibold text-slate-800 focus:outline-none">
                         <span class="text-slate-300">|</span>
                         <select id="empFilterSelect" aria-label="Filter Staff"
@@ -228,97 +232,132 @@
                             🔑 <span class="hidden sm:inline">Password</span>
                         </button>
                         <button type="button" data-action="sign-out"
-                            class="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition cursor-pointer">
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition cursor-pointer">
                             Sign Out
                         </button>
                     </div>
                 </div>
             </div>
-
-            <!-- Supervisor / Admin Action Bar (Horizontal swipeable on mobile) -->
-            <div id="adminHeaderControls" class="hidden max-w-[1840px] mx-auto px-3 sm:px-6 pb-2 pt-1.5 border-t border-slate-100 items-center gap-1.5 overflow-x-auto custom-scrollbar sm:flex-wrap">
-                <button type="button" data-toolbar-btn="toggleView" data-action="toggle-draft-published" id="toggleDraftPubBtn"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition cursor-pointer shrink-0">
-                    👁 View Published
-                </button>
-                <button type="button" data-toolbar-btn="publish" data-action="publish-draft" id="publishDraftBtn"
-                    class="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition cursor-pointer shrink-0">
-                    📢 Publish &amp; Approve
-                </button>
-                <button type="button" data-toolbar-btn="receipts" data-action="open-receipts-modal"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white shadow-xs transition cursor-pointer shrink-0">
-                    👁 Read Receipts
-                </button>
-                <button type="button" data-toolbar-btn="undo" data-action="undo-action" id="undoBtn" disabled
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer disabled:opacity-40 shrink-0">
-                    ↶ Undo
-                </button>
-                <button type="button" data-toolbar-btn="redo" data-action="redo-action" id="redoBtn" disabled
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer disabled:opacity-40 shrink-0">
-                    ↷ Redo
-                </button>
-                <button type="button" data-toolbar-btn="syncLeaves" data-action="open-sync-leaves"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition cursor-pointer shrink-0">
-                    ⇄ Sync Leaves
-                </button>
-                <button type="button" data-toolbar-btn="rules" data-action="open-rules-modal"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition cursor-pointer shrink-0">
-                    ⚠️ Rules &amp; Alerts
-                </button>
-                <button type="button" data-toolbar-btn="addEmp" data-action="add-employee"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition cursor-pointer shrink-0">
-                    + Add Employee
-                </button>
-                <button type="button" data-toolbar-btn="arrangeStaff" data-action="toggle-arrange-staff" id="arrangeStaffBtn"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition cursor-pointer shrink-0">
-                    ↕️ Arrange Staff
-                </button>
-                <button type="button" data-toolbar-btn="addCode" data-action="open-add-code-modal"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition cursor-pointer shrink-0">
-                    + Add Code
-                </button>
-                <button type="button" data-toolbar-btn="copyPrev" data-action="copy-prev-month"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 transition cursor-pointer shrink-0">
-                    Copy Prev Month
-                </button>
-                <button type="button" data-toolbar-btn="lockMonth" data-action="toggle-month-lock" id="lockMonthBtn"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition cursor-pointer shrink-0">
-                    Lock Month
-                </button>
-                <button type="button" data-toolbar-btn="exportCsv" data-action="export-csv"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition cursor-pointer shrink-0">
-                    Export CSV
-                </button>
-                <button type="button" data-toolbar-btn="auditLog" data-action="open-audit-modal"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 transition cursor-pointer shrink-0">
-                    📋 Audit Log
-                </button>
-                <button type="button" data-toolbar-btn="clearMonth" data-action="open-clear-month-modal"
-                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition cursor-pointer shrink-0">
-                    Clear Month
-                </button>
-                <button type="button" data-action="toggle-arrange-buttons" id="arrangeButtonsBtn"
-                    class="hidden sm:inline-block px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition cursor-pointer shrink-0">
-                    ⇄ Arrange Buttons
-                </button>
-                <button type="button" data-action="reset-toolbar-order" id="resetToolbarOrderBtn"
-                    class="hidden px-2 py-1.5 rounded-xl text-xs font-bold bg-slate-200 hover:bg-slate-300 text-slate-800 transition cursor-pointer shrink-0">
-                    ↺ Reset
-                </button>
-            </div>
         </header>
 
         <!-- Main Workspace -->
-        <main class="w-full px-2 sm:px-6 py-3 sm:py-4 space-y-3 flex-1 flex flex-col items-center">
+        <main class="w-full px-2 sm:px-6 py-3.5 space-y-3.5 flex-1 flex flex-col items-center">
 
-            <!-- Admin Paint Brush & Layout Size Panel -->
+            <!-- Clean 4-Card Supervisor Control Panel (Strictly Toolbar Box Styling Only) -->
+            <section id="adminHeaderControls" class="hidden w-full max-w-[1660px] space-y-2.5 no-print">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+                    <!-- Group 1: Workflow -->
+                    <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-2">
+                        <div class="text-[11px] font-extrabold text-slate-700 tracking-wide">Workflow</div>
+                        <div data-btn-group="workflow" class="flex items-center gap-2 flex-wrap">
+                            <button type="button" data-toolbar-btn="publish" data-action="publish-draft" id="publishDraftBtn"
+                                class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-700 hover:bg-emerald-800 text-white shadow-2xs transition cursor-pointer">
+                                📢 Publish &amp; Approve
+                            </button>
+                            <button type="button" data-toolbar-btn="toggleView" data-action="toggle-draft-published" id="toggleDraftPubBtn"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition cursor-pointer">
+                                👁 View Published
+                            </button>
+                            <div class="inline-flex items-center rounded-xl border border-slate-300 bg-white overflow-hidden">
+                                <button type="button" data-toolbar-btn="undo" data-action="undo-action" id="undoBtn" disabled
+                                    class="px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 border-r border-slate-200 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                                    ↶ Undo
+                                </button>
+                                <button type="button" data-toolbar-btn="redo" data-action="redo-action" id="redoBtn" disabled
+                                    class="px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                                    ↷ Redo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Group 2: Data Insights -->
+                    <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-2">
+                        <div class="text-[11px] font-extrabold text-slate-700 tracking-wide">Data Insights</div>
+                        <div data-btn-group="insights" class="flex items-center gap-2 flex-wrap">
+                            <button type="button" data-toolbar-btn="syncLeaves" data-action="open-sync-leaves"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 transition cursor-pointer">
+                                ⇄ Sync Leaves
+                            </button>
+                            <button type="button" data-toolbar-btn="rules" data-action="open-rules-modal"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition cursor-pointer">
+                                ⚠️ Rules &amp; Alerts
+                            </button>
+                            <button type="button" data-toolbar-btn="receipts" data-action="open-receipts-modal"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition cursor-pointer">
+                                👁 Read Receipts
+                            </button>
+                            <button type="button" data-toolbar-btn="auditLog" data-action="open-audit-modal"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
+                                📋 Audit Log
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Group 3: Staff & Roster Management -->
+                    <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-2">
+                        <div class="text-[11px] font-extrabold text-slate-700 tracking-wide">Staff &amp; Roster Management</div>
+                        <div data-btn-group="management" class="flex items-center gap-2 flex-wrap">
+                            <button type="button" data-toolbar-btn="addEmp" data-action="add-employee"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition cursor-pointer">
+                                + Add Employee
+                            </button>
+                            <button type="button" data-toolbar-btn="arrangeStaff" data-action="toggle-arrange-staff" id="arrangeStaffBtn"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition cursor-pointer">
+                                ↕️ Arrange Staff
+                            </button>
+                            <button type="button" data-toolbar-btn="addCode" data-action="open-add-code-modal"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition cursor-pointer">
+                                + Add Code
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Group 4: Month Tools -->
+                    <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-2">
+                        <div class="text-[11px] font-extrabold text-slate-700 tracking-wide">Month Tools</div>
+                        <div data-btn-group="monthTools" class="flex items-center gap-2 flex-wrap">
+                            <button type="button" data-toolbar-btn="copyPrev" data-action="copy-prev-month"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
+                                Copy Prev Month
+                            </button>
+                            <button type="button" data-toolbar-btn="lockMonth" data-action="toggle-month-lock" id="lockMonthBtn"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
+                                Lock Month
+                            </button>
+                            <button type="button" data-toolbar-btn="exportCsv" data-action="export-csv"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
+                                Export CSV
+                            </button>
+                            <button type="button" data-toolbar-btn="clearMonth" data-action="open-clear-month-modal"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-rose-50 text-rose-700 border border-slate-300 hover:border-rose-200 transition cursor-pointer">
+                                Clear Month
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right-Aligned Arrange Buttons Toggle -->
+                <div class="flex items-center justify-end gap-2">
+                    <button type="button" data-action="reset-toolbar-order" id="resetToolbarOrderBtn"
+                        class="hidden px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-200 hover:bg-slate-300 text-slate-800 transition cursor-pointer">
+                        ↺ Reset Order
+                    </button>
+                    <button type="button" data-action="toggle-arrange-buttons" id="arrangeButtonsBtn"
+                        class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-2xs transition cursor-pointer">
+                        ⇄ Arrange Buttons
+                    </button>
+                </div>
+            </section>
+
+            <!-- Admin Paint Brush (Original Colors Preserved) & Layout Size Panel -->
             <section id="adminPaintToolbar" class="hidden w-full max-w-[1660px] bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-300 shadow-xs space-y-2.5 no-print">
                 <div class="flex flex-wrap items-center justify-between gap-2">
-                    <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scrollbar pb-1 sm:pb-0 w-full sm:w-auto">
+                    <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-xs font-extrabold text-slate-800 shrink-0">Brush:</span>
-                        <div id="adminBrushPalette" class="flex items-center gap-1.5 shrink-0 sm:flex-wrap"></div>
+                        <div id="adminBrushPalette" class="flex items-center gap-1.5 flex-wrap"></div>
                     </div>
-                    <div class="hidden sm:block text-[11px] font-medium text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                    <div class="text-[11px] font-medium text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
                         <strong>Tip:</strong> Tap/drag cells to paint. Right-click to clear. <strong>Alt+Click</strong> to override alert.
                     </div>
                 </div>
@@ -363,7 +402,7 @@
                 </div>
             </section>
 
-            <!-- Unified Roster Container -->
+            <!-- Unified Roster Container (100% Untouched Colors & Layout) -->
             <section id="rosterOuterCard" style="width: fit-content; max-width: 100%;" class="bg-white rounded-2xl border border-slate-300 shadow-sm p-2 sm:p-4 overflow-hidden">
                 <div id="rosterScrollContainer" class="w-full overflow-x-auto custom-scrollbar pb-1.5">
                     <div id="unifiedRosterWrapper" class="inline-block min-w-max"></div>
@@ -625,7 +664,7 @@
             const ADMIN_SUPERVISORS = ["fawari", "aalharb", "malreheili", "aalshalawi", "abasaeed", "asofta"];
             const AUTH_DOMAIN_SUFFIX = "@occ.local";
             const FORTY_DAYS_MS = 40 * 24 * 60 * 60 * 1000;
-            const TOOLBAR_ORDER_STORAGE_KEY = "occ_roster_toolbar_order_v2";
+            const TOOLBAR_ORDER_STORAGE_KEY = "occ_roster_toolbar_grouped_v3";
             const CORE_COUNTER_CODES = ["A", "B", "C"];
             const WEEKEND_DAYS = [5, 6];
 
@@ -679,36 +718,17 @@
                 months: {}
             };
 
-            let currentAuthUser = null;
-            let currentUsername = "";
-            let dbInstance = null;
-            let authInstance = null;
-            let publishedRef = null;
-            let draftRef = null;
-            let publishedCache = null;
-            let draftCache = null;
-            let undoStack = [];
-            let redoStack = [];
-            let isPainting = false;
-            let paintOp = "apply";
-            let paintVisited = new Set();
-            let persistDimTimer = null;
+            let currentAuthUser = null, currentUsername = "", dbInstance = null, authInstance = null;
+            let publishedRef = null, draftRef = null, publishedCache = null, draftCache = null;
+            let undoStack = [], redoStack = [], isPainting = false, paintOp = "apply", paintVisited = new Set(), persistDimTimer = null;
 
-            function escapeHtml(str) {
-                return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-            }
-
-            function clampNumber(val, min, max, fallback) {
-                const n = Number(val);
-                return Number.isNaN(n) ? fallback : Math.max(min, Math.min(max, Math.round(n)));
-            }
+            function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+            function clampNumber(val, min, max, fallback) { const n = Number(val); return Number.isNaN(n) ? fallback : Math.max(min, Math.min(max, Math.round(n))); }
 
             function getContrastTextColor(hex) {
                 const clean = String(hex || "#ffffff").replace("#", "");
                 if (clean.length !== 6) return "#000000";
-                const r = parseInt(clean.substring(0, 2), 16);
-                const g = parseInt(clean.substring(2, 4), 16);
-                const b = parseInt(clean.substring(4, 6), 16);
+                const r = parseInt(clean.substring(0, 2), 16), g = parseInt(clean.substring(2, 4), 16), b = parseInt(clean.substring(4, 6), 16);
                 return ((0.299 * r + 0.587 * g + 0.114 * b) / 255) > 0.56 ? "#000000" : "#ffffff";
             }
 
@@ -732,15 +752,8 @@
                 return { year, monthIndex };
             }
 
-            function normalizeRosterMonthKey(monthKey) {
-                const { year, monthIndex } = parseMonthKey(monthKey);
-                return year + "-" + String(monthIndex + 1).padStart(2, "0");
-            }
-
-            function formatMonthBadge(monthKey) {
-                const { year, monthIndex } = parseMonthKey(monthKey);
-                return MONTHS_SHORT[monthIndex] + "-" + String(year).slice(-2);
-            }
+            function normalizeRosterMonthKey(monthKey) { const { year, monthIndex } = parseMonthKey(monthKey); return year + "-" + String(monthIndex + 1).padStart(2, "0"); }
+            function formatMonthBadge(monthKey) { const { year, monthIndex } = parseMonthKey(monthKey); return MONTHS_SHORT[monthIndex] + "-" + String(year).slice(-2); }
 
             function getDaysInMonthKey(monthKey) {
                 const { year, monthIndex } = parseMonthKey(monthKey);
@@ -759,23 +772,18 @@
                 const yNum = Number(selectedYear) || 2026;
                 const startIdx = yNum === 2026 ? 11 : 0;
                 const opts = [];
-                for (let idx = startIdx; idx < 12; idx++) {
-                    const mVal = String(idx + 1).padStart(2, "0");
-                    opts.push(`<option value="${mVal}">${MONTHS_FULL[idx]} (${MONTHS_SHORT[idx]})</option>`);
-                }
+                for (let idx = startIdx; idx < 12; idx++) opts.push(`<option value="${String(idx + 1).padStart(2, "0")}">${MONTHS_FULL[idx]} (${MONTHS_SHORT[idx]})</option>`);
                 monthSel.innerHTML = opts.join("");
             }
 
             function syncDateNavigatorInputs() {
                 state.currentMonthKey = normalizeRosterMonthKey(state.currentMonthKey);
                 const [yStr, mStr] = state.currentMonthKey.split("-");
-                const yearSel = document.getElementById("yearPartSelect");
-                const monthSel = document.getElementById("monthPartSelect");
+                const yearSel = document.getElementById("yearPartSelect"), monthSel = document.getElementById("monthPartSelect");
                 if (yearSel && yearSel.value !== yStr) yearSel.value = yStr;
                 populateMonthSelectDropdown(yStr);
                 if (monthSel) monthSel.value = mStr;
-                const prevBtn = document.getElementById("prevMonthBtn");
-                const nextBtn = document.getElementById("nextMonthBtn");
+                const prevBtn = document.getElementById("prevMonthBtn"), nextBtn = document.getElementById("nextMonthBtn");
                 if (prevBtn) prevBtn.disabled = (state.currentMonthKey === "2026-12");
                 if (nextBtn) nextBtn.disabled = (state.currentMonthKey === "2030-12");
             }
@@ -802,16 +810,14 @@
             function canEditCurrentView() { return state.isAdmin && state.viewingDraft; }
 
             function updateStatusBadge(mode) {
-                const badge = document.getElementById("cloudStatusBadge");
-                const dot = document.getElementById("cloudStatusDot");
-                const text = document.getElementById("cloudStatusText");
+                const badge = document.getElementById("cloudStatusBadge"), dot = document.getElementById("cloudStatusDot"), text = document.getElementById("cloudStatusText");
                 if (!badge || !dot || !text) return;
                 if (mode === "connected") {
-                    badge.className = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200";
+                    badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200";
                     dot.className = "w-2 h-2 rounded-full bg-emerald-500";
                     text.textContent = "Live Cloud Sync";
                 } else {
-                    badge.className = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200";
+                    badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200";
                     dot.className = "w-2 h-2 rounded-full bg-amber-500";
                     text.textContent = "Offline";
                 }
@@ -889,14 +895,14 @@
                 if (!canEditCurrentView() || !draftRef) return;
                 const payload = buildExportPayload();
                 draftCache = JSON.parse(JSON.stringify(payload));
-                draftRef.set(payload).catch(function () { updateStatusBadge("offline"); });
+                draftRef.set(payload).catch(() => updateStatusBadge("offline"));
                 if (auditNote) logAuditEvent(auditNote);
             }
 
             function scheduleDimensionPersist() {
                 if (!canEditCurrentView()) return;
                 if (persistDimTimer) clearTimeout(persistDimTimer);
-                persistDimTimer = setTimeout(function () { persistDraft("Updated layout dimensions"); }, 400);
+                persistDimTimer = setTimeout(() => persistDraft("Updated layout dimensions"), 400);
             }
 
             function publishDraftToOfficial() {
@@ -912,11 +918,11 @@
                 draftCache = JSON.parse(JSON.stringify(payload));
                 publishedCache = JSON.parse(JSON.stringify(payload));
                 draftRef.set(payload);
-                publishedRef.set(payload).then(function () {
+                publishedRef.set(payload).then(() => {
                     renderPreservingScroll();
                     logAuditEvent("Published & Approved " + formatMonthBadge(state.currentMonthKey) + " as " + monthRec.version);
                     showToast("Published " + formatMonthBadge(state.currentMonthKey) + " (" + monthRec.version + ") to all staff!", "success");
-                }).catch(function () { showToast("Publish failed. Check permissions.", "error"); });
+                }).catch(() => showToast("Publish failed. Check permissions.", "error"));
             }
 
             function logAuditEvent(actionText) {
@@ -927,9 +933,7 @@
 
             function recordStaffReadReceipt() {
                 if (!dbInstance || !currentUsername) return;
-                const monthRec = ensureMonthRecord(state.currentMonthKey);
-                const ver = monthRec.version || "V1";
-                const now = Date.now();
+                const monthRec = ensureMonthRecord(state.currentMonthKey), ver = monthRec.version || "V1", now = Date.now();
                 const key = currentUsername + "_" + state.currentMonthKey + "_" + ver;
                 dbInstance.ref(DB_BASE_PATH + "/read_receipts/" + key).set({ user: currentUsername, monthKey: state.currentMonthKey, monthLabel: formatMonthBadge(state.currentMonthKey), version: ver, timestamp: now, timeFormatted: new Date(now).toLocaleString("en-GB") });
             }
@@ -963,8 +967,7 @@
             }
 
             function updateUndoRedoButtons() {
-                const uBtn = document.getElementById("undoBtn");
-                const rBtn = document.getElementById("redoBtn");
+                const uBtn = document.getElementById("undoBtn"), rBtn = document.getElementById("redoBtn");
                 if (uBtn) uBtn.disabled = undoStack.length === 0;
                 if (rBtn) rBtn.disabled = redoStack.length === 0;
             }
@@ -976,8 +979,7 @@
                 const prevDaysCount = new Date(year, monthIndex, 0).getDate();
                 const prevRec = state.months[prevKey] || { assignments: {} };
 
-                const alerts = [];
-                const flags = {};
+                const alerts = [], flags = {};
                 const ensureFlag = (ck) => { if (!flags[ck]) flags[ck] = { fatigue: false, conflict: false, overridden: false }; return flags[ck]; };
 
                 state.employees.forEach(emp => {
@@ -994,27 +996,21 @@
                             if (!code) restDays++; else break;
                         }
                         if (foundC && restDays <= 2) {
-                            const ck = emp.id + "_" + d;
-                            const fl = ensureFlag(ck);
-                            fl.fatigue = true;
-                            fl.overridden = Boolean(monthRec.overrides[ck]);
+                            const ck = emp.id + "_" + d, fl = ensureFlag(ck);
+                            fl.fatigue = true; fl.overridden = Boolean(monthRec.overrides[ck]);
                             alerts.push({ ck1: ck, ck2: null, text: emp.name + " — Day " + d + ": C → A after " + restDays + " rest day(s)", overridden: fl.overridden });
                         }
                     });
                 });
 
                 (state.separationRules || []).forEach(rule => {
-                    const a1 = monthRec.assignments[String(rule.emp1)] || {};
-                    const a2 = monthRec.assignments[String(rule.emp2)] || {};
-                    const e1 = state.employees.find(e => String(e.id) === String(rule.emp1));
-                    const e2 = state.employees.find(e => String(e.id) === String(rule.emp2));
+                    const a1 = monthRec.assignments[String(rule.emp1)] || {}, a2 = monthRec.assignments[String(rule.emp2)] || {};
+                    const e1 = state.employees.find(e => String(e.id) === String(rule.emp1)), e2 = state.employees.find(e => String(e.id) === String(rule.emp2));
                     if (!e1 || !e2) return;
                     daysList.forEach(dObj => {
-                        const d = dObj.day;
-                        const c1 = a1[String(d)], c2 = a2[String(d)];
+                        const d = dObj.day, c1 = a1[String(d)], c2 = a2[String(d)];
                         if (c1 && c2 && c1 === c2) {
-                            const ck1 = e1.id + "_" + d, ck2 = e2.id + "_" + d;
-                            const ov = Boolean(monthRec.overrides[ck1] || monthRec.overrides[ck2]);
+                            const ck1 = e1.id + "_" + d, ck2 = e2.id + "_" + d, ov = Boolean(monthRec.overrides[ck1] || monthRec.overrides[ck2]);
                             ensureFlag(ck1).conflict = true; ensureFlag(ck1).overridden = ov;
                             ensureFlag(ck2).conflict = true; ensureFlag(ck2).overridden = ov;
                             alerts.push({ ck1: ck1, ck2: ck2, text: "Day " + d + " (Shift " + c1 + "): " + e1.name + " & " + e2.name + " scheduled together", overridden: ov });
@@ -1101,7 +1097,7 @@
                     ["dimDayWidthRange", "dimDayWidthNum", dims.dayColWidth],
                     ["dimDividerWidthRange", "dimDividerWidthNum", dims.dividerWidth],
                     ["dimRowHeightRange", "dimRowHeightNum", dims.rowHeight]
-                ].forEach(function (item) {
+                ].forEach(item => {
                     const r = document.getElementById(item[0]), n = document.getElementById(item[1]);
                     if (r) r.value = item[2];
                     if (n) n.value = item[2];
@@ -1130,11 +1126,11 @@
                 if (pubBadge) {
                     if (state.isAdmin && state.viewingDraft) {
                         pubBadge.textContent = "🟡 Draft Mode";
-                        pubBadge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-300";
+                        pubBadge.className = "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-300";
                         if (toggleDraftPubBtn) toggleDraftPubBtn.textContent = "👁 View Published";
                     } else {
                         pubBadge.textContent = "🟢 Published Official";
-                        pubBadge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300";
+                        pubBadge.className = "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300";
                         if (toggleDraftPubBtn) toggleDraftPubBtn.textContent = "✏️ Back to Draft";
                     }
                 }
@@ -1158,12 +1154,10 @@
 
                 if (state.isAdmin) {
                     adminHeader.classList.remove("hidden");
-                    adminHeader.classList.add("flex");
                     adminToolbar.classList.toggle("hidden", !state.viewingDraft);
                     if (lockMonthBtn) lockMonthBtn.textContent = monthRec.locked ? "Unlock Month" : "Lock Month";
                 } else {
                     adminHeader.classList.add("hidden");
-                    adminHeader.classList.remove("flex");
                     adminToolbar.classList.add("hidden");
                 }
             }
@@ -1180,10 +1174,10 @@
                     const ringCls = isSelected ? "ring-2 ring-offset-1 ring-slate-900 scale-105 shadow-sm" : "opacity-90 hover:opacity-100";
                     return `
                         <button type="button" data-action="select-brush" data-code="${escapeHtml(c.code)}"
-                            class="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl border border-slate-800 text-xs font-extrabold transition cursor-pointer ${ringCls}"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-800 text-xs font-extrabold transition cursor-pointer ${ringCls}"
                             style="background-color: ${escapeHtml(c.color)}; color: ${escapeHtml(textColor)};">
                             <span class="px-1.5 py-0.2 rounded bg-black/10 shift-letter ${patternCls} ${crispCls}">${escapeHtml(c.code)}</span>
-                            <span class="text-[10px] sm:text-[11px] font-bold">${escapeHtml(c.label)}</span>
+                            <span class="text-[11px] font-bold">${escapeHtml(c.label)}</span>
                         </button>
                     `;
                 }).join("");
@@ -1421,31 +1415,41 @@
                 if (editable && state.arrangeStaffMode) bindStaffRowDragEvents();
             }
 
+            // Toolbar Drag & Drop across groups
             function applySavedToolbarOrder() {
                 try {
                     const saved = JSON.parse(localStorage.getItem(TOOLBAR_ORDER_STORAGE_KEY) || "null");
-                    if (!Array.isArray(saved)) return;
-                    const bar = document.getElementById("adminHeaderControls");
-                    const anchor = document.getElementById("arrangeButtonsBtn");
-                    if (!bar || !anchor) return;
-                    saved.forEach(btnKey => { const el = bar.querySelector(`[data-toolbar-btn="${btnKey}"]`); if (el) bar.insertBefore(el, anchor); });
+                    if (!saved || typeof saved !== "object") return;
+                    const root = document.getElementById("adminHeaderControls");
+                    if (!root) return;
+                    Object.keys(saved).forEach(groupName => {
+                        const groupEl = root.querySelector(`[data-btn-group="${groupName}"]`);
+                        if (!groupEl || !Array.isArray(saved[groupName])) return;
+                        saved[groupName].forEach(btnKey => {
+                            const btnEl = root.querySelector(`[data-toolbar-btn="${btnKey}"]`);
+                            if (btnEl) groupEl.appendChild(btnEl);
+                        });
+                    });
                 } catch (e) {}
             }
 
             function saveCurrentToolbarOrder() {
-                const bar = document.getElementById("adminHeaderControls");
-                if (!bar) return;
-                const keys = [...bar.querySelectorAll("[data-toolbar-btn]")].map(b => b.dataset.toolbarBtn);
-                localStorage.setItem(TOOLBAR_ORDER_STORAGE_KEY, JSON.stringify(keys));
+                const root = document.getElementById("adminHeaderControls");
+                if (!root) return;
+                const map = {};
+                root.querySelectorAll("[data-btn-group]").forEach(groupEl => {
+                    map[groupEl.dataset.btnGroup] = [...groupEl.querySelectorAll("[data-toolbar-btn]")].map(b => b.dataset.toolbarBtn);
+                });
+                localStorage.setItem(TOOLBAR_ORDER_STORAGE_KEY, JSON.stringify(map));
             }
 
             function initToolbarDragEvents() {
-                const bar = document.getElementById("adminHeaderControls");
-                if (!bar) return;
+                const root = document.getElementById("adminHeaderControls");
+                if (!root) return;
                 let draggedBtn = null;
-                bar.querySelectorAll("[data-toolbar-btn]").forEach(btn => {
+                root.querySelectorAll("[data-toolbar-btn]").forEach(btn => {
                     btn.addEventListener("dragstart", function (e) { if (!state.arrangeButtonsMode) { e.preventDefault(); return; } draggedBtn = btn; btn.classList.add("btn-dragging"); });
-                    btn.addEventListener("dragend", function () { btn.classList.remove("btn-dragging"); bar.querySelectorAll(".btn-drag-over").forEach(el => el.classList.remove("btn-drag-over")); saveCurrentToolbarOrder(); });
+                    btn.addEventListener("dragend", function () { btn.classList.remove("btn-dragging"); root.querySelectorAll(".btn-drag-over").forEach(el => el.classList.remove("btn-drag-over")); saveCurrentToolbarOrder(); });
                     btn.addEventListener("dragover", function (e) { if (!state.arrangeButtonsMode || !draggedBtn || draggedBtn === btn) return; e.preventDefault(); btn.classList.add("btn-drag-over"); });
                     btn.addEventListener("dragleave", function () { btn.classList.remove("btn-drag-over"); });
                     btn.addEventListener("drop", function (e) {
@@ -1453,7 +1457,7 @@
                         e.preventDefault();
                         btn.classList.remove("btn-drag-over");
                         const rect = btn.getBoundingClientRect();
-                        bar.insertBefore(draggedBtn, (e.clientX - rect.left) > rect.width / 2 ? btn.nextSibling : btn);
+                        btn.parentNode.insertBefore(draggedBtn, (e.clientX - rect.left) > rect.width / 2 ? btn.nextSibling : btn);
                         saveCurrentToolbarOrder();
                     });
                 });
@@ -1496,7 +1500,7 @@
                 el.className = "px-4 py-2.5 rounded-xl border shadow-lg text-xs font-semibold pointer-events-auto transition-opacity duration-300 " + (palette[type] || palette.info);
                 el.textContent = msg;
                 container.appendChild(el);
-                setTimeout(function () { el.style.opacity = "0"; setTimeout(function () { el.remove(); }, 300); }, 3400);
+                setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 300); }, 3400);
             }
 
             function renderRulesModalContent() {
@@ -1504,8 +1508,7 @@
                 const empOpts = state.employees.map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join("");
                 sel1.innerHTML = empOpts; sel2.innerHTML = empOpts;
 
-                const rulesContainer = document.getElementById("sepRulesListContainer");
-                rulesContainer.innerHTML = (state.separationRules || []).map((r, idx) => {
+                document.getElementById("sepRulesListContainer").innerHTML = (state.separationRules || []).map((r, idx) => {
                     const e1 = state.employees.find(e => String(e.id) === String(r.emp1));
                     const e2 = state.employees.find(e => String(e.id) === String(r.emp2));
                     return `<div class="flex items-center justify-between px-2.5 py-1.5 bg-white rounded-lg border border-slate-200"><span class="font-bold text-slate-800">${escapeHtml(e1 ? e1.name : r.emp1)} ≠ ${escapeHtml(e2 ? e2.name : r.emp2)}</span><button type="button" data-action="remove-sep-rule" data-idx="${idx}" class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-bold">Remove</button></div>`;
@@ -1758,11 +1761,11 @@
                     renderPreservingScroll();
                 } else if (action === "toggle-arrange-buttons" && state.isAdmin) {
                     state.arrangeButtonsMode = !state.arrangeButtonsMode;
-                    const bar = document.getElementById("adminHeaderControls"), btn = document.getElementById("arrangeButtonsBtn"), rstBtn = document.getElementById("resetToolbarOrderBtn");
-                    bar.classList.toggle("toolbar-arranging", state.arrangeButtonsMode);
+                    const root = document.getElementById("adminHeaderControls"), btn = document.getElementById("arrangeButtonsBtn"), rstBtn = document.getElementById("resetToolbarOrderBtn");
+                    root.classList.toggle("toolbar-arranging", state.arrangeButtonsMode);
                     btn.textContent = state.arrangeButtonsMode ? "✓ Done Buttons" : "⇄ Arrange Buttons";
                     rstBtn.classList.toggle("hidden", !state.arrangeButtonsMode);
-                    bar.querySelectorAll("[data-toolbar-btn]").forEach(b => b.setAttribute("draggable", state.arrangeButtonsMode ? "true" : "false"));
+                    root.querySelectorAll("[data-toolbar-btn]").forEach(b => b.setAttribute("draggable", state.arrangeButtonsMode ? "true" : "false"));
                 } else if (action === "reset-toolbar-order" && state.isAdmin) { localStorage.removeItem(TOOLBAR_ORDER_STORAGE_KEY); location.reload(); }
                 else if (action === "save-dept-title-inline" && canEditCurrentView()) {
                     const val = document.getElementById("adminDeptTitleInput").value.trim();
