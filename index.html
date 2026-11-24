@@ -518,7 +518,7 @@
             let currentAuthUser = null, currentUsername = "", dbInstance = null, authInstance = null;
             let publishedRef = null, draftRef = null, publishedCache = null, draftCache = null;
             let undoStack = [], redoStack = [], isPainting = false, paintOp = "apply", paintVisited = new Set(), persistDimTimer = null;
-
+            let pendingAuditChanges = [];
             function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
             function clampNumber(val, min, max, fallback) { const n = Number(val); return Number.isNaN(n) ? fallback : Math.max(min, Math.min(max, Math.round(n))); }
 
@@ -848,38 +848,47 @@
                 if (!document.getElementById("rulesAlertsModal").classList.contains("hidden")) renderRulesModalContent();
             }
 
-            function applyPaintToCell(empId, dayNum, forcedOp) {
-                if (!canEditCurrentView()) return false;
-                const monthRec = ensureMonthRecord(state.currentMonthKey);
-                if (monthRec.locked) { showToast("This month is locked. Unlock it first to edit.", "error"); return false; }
-                const empKey = String(empId), dKey = String(dayNum), cellKey = empKey + "_" + dKey;
-                if (!monthRec.assignments[empKey]) monthRec.assignments[empKey] = {};
-                const currentVal = monthRec.assignments[empKey][dKey] || null;
+            function recordCellAuditChange(empId, dayNum, oldVal, newVal) {
+    const emp = state.employees.find(e => String(e.id) === String(empId));
+    const empName = emp ? emp.name : ("ID#" + empId);
+    const fromTxt = oldVal || "Empty";
+    const toTxt = newVal || "Cleared";
+    pendingAuditChanges.push(`${empName}: Day ${dayNum} (${fromTxt} → ${toTxt})`);
+}
 
-                if (state.activeBrush === "CLEAR" || forcedOp === "clear") {
-                    if (!currentVal) return false;
-                    delete monthRec.assignments[empKey][dKey];
-                    delete monthRec.syncedLeaves[cellKey];
-                    delete monthRec.overrides[cellKey];
-                    return true;
-                }
+function applyPaintToCell(empId, dayNum, forcedOp) {
+    if (!canEditCurrentView()) return false;
+    const monthRec = ensureMonthRecord(state.currentMonthKey);
+    if (monthRec.locked) { showToast("This month is locked. Unlock it first to edit.", "error"); return false; }
+    const empKey = String(empId), dKey = String(dayNum), cellKey = empKey + "_" + dKey;
+    if (!monthRec.assignments[empKey]) monthRec.assignments[empKey] = {};
+    const currentVal = monthRec.assignments[empKey][dKey] || null;
 
-                const op = forcedOp || (currentVal === state.activeBrush ? "clear" : "apply");
-                if (op === "clear") {
-                    if (!currentVal) return false;
-                    delete monthRec.assignments[empKey][dKey];
-                    delete monthRec.syncedLeaves[cellKey];
-                    delete monthRec.overrides[cellKey];
-                    return true;
-                }
+    if (state.activeBrush === "CLEAR" || forcedOp === "clear") {
+        if (!currentVal) return false;
+        delete monthRec.assignments[empKey][dKey];
+        delete monthRec.syncedLeaves[cellKey];
+        delete monthRec.overrides[cellKey];
+        recordCellAuditChange(empId, dayNum, currentVal, null);
+        return true;
+    }
 
-                if (currentVal === state.activeBrush) return false;
-                monthRec.assignments[empKey][dKey] = state.activeBrush;
-                delete monthRec.syncedLeaves[cellKey];
-                return true;
-            }
+    const op = forcedOp || (currentVal === state.activeBrush ? "clear" : "apply");
+    if (op === "clear") {
+        if (!currentVal) return false;
+        delete monthRec.assignments[empKey][dKey];
+        delete monthRec.syncedLeaves[cellKey];
+        delete monthRec.overrides[cellKey];
+        recordCellAuditChange(empId, dayNum, currentVal, null);
+        return true;
+    }
 
-            function computeDailyCounters(daysList, monthRec) {
+    if (currentVal === state.activeBrush) return false;
+    monthRec.assignments[empKey][dKey] = state.activeBrush;
+    delete monthRec.syncedLeaves[cellKey];
+    recordCellAuditChange(empId, dayNum, currentVal, state.activeBrush);
+    return true;
+}
                 const totalPerDay = {}, codePerDay = {};
                 daysList.forEach(dObj => { totalPerDay[dObj.day] = 0; });
                 state.codes.forEach(c => { codePerDay[c.code] = {}; daysList.forEach(dObj => { codePerDay[c.code][dObj.day] = 0; }); });
@@ -1720,13 +1729,69 @@
                     if (applyPaintToCell(empId, dayNum, paintOp)) renderPreservingScroll();
                 };
 
+                // Grid Cell Painting (Desktop Mouse + Mobile Touch)
+            const unifiedWrapper = document.getElementById("unifiedRosterWrapper");
+            if (unifiedWrapper) {
+                unifiedWrapper.addEventListener("contextmenu", function (e) {
+                    if (!canEditCurrentView()) return;
+                    const cell = e.target.closest("[data-cell]");
+                    if (!cell) return;
+                    e.preventDefault();
+                    pushUndoSnapshot();
+                    pendingAuditChanges = [];
+                    if (applyPaintToCell(Number(cell.dataset.emp), Number(cell.dataset.day), "clear")) {
+                        const monthTag = formatMonthBadge(state.currentMonthKey);
+                        const detailMsg = `${monthTag} | ` + pendingAuditChanges.join(", ");
+                        pendingAuditChanges = [];
+                        renderPreservingScroll();
+                        persistDraft(detailMsg);
+                    }
+                });
+
+                const startAdminGridPaint = (cell, altKey) => {
+                    if (!canEditCurrentView() || state.arrangeStaffMode || !cell) return false;
+                    const empId = Number(cell.dataset.emp), dayNum = Number(cell.dataset.day);
+                    if (altKey) { toggleCellOverride(empId + "_" + dayNum, null); return true; }
+                    const monthRec = ensureMonthRecord(state.currentMonthKey);
+                    if (monthRec.locked) { showToast("Month is locked.", "error"); return false; }
+                    pushUndoSnapshot();
+                    pendingAuditChanges = [];
+                    const existing = (monthRec.assignments[String(empId)] || {})[String(dayNum)] || null;
+                    paintOp = (state.activeBrush !== "CLEAR" && existing === state.activeBrush) ? "clear" : "apply";
+                    isPainting = true;
+                    paintVisited = new Set([empId + ":" + dayNum]);
+                    if (applyPaintToCell(empId, dayNum, paintOp)) renderPreservingScroll();
+                    return true;
+                };
+
+                const moveAdminGridPaint = (cell) => {
+                    if (!isPainting || !canEditCurrentView() || !cell) return;
+                    const empId = Number(cell.dataset.emp), dayNum = Number(cell.dataset.day), key = empId + ":" + dayNum;
+                    if (paintVisited.has(key)) return;
+                    paintVisited.add(key);
+                    if (applyPaintToCell(empId, dayNum, paintOp)) renderPreservingScroll();
+                };
+
                 unifiedWrapper.addEventListener("mousedown", function (e) { if (e.button === 0) { const cell = e.target.closest("[data-cell]"); if (cell) startAdminGridPaint(cell, e.altKey); } });
                 unifiedWrapper.addEventListener("mouseover", function (e) { const cell = e.target.closest("[data-cell]"); if (cell) moveAdminGridPaint(cell); });
                 unifiedWrapper.addEventListener("touchstart", function (e) { if (canEditCurrentView() && e.touches.length === 1) { const cell = e.target.closest("[data-cell]"); if (cell && startAdminGridPaint(cell, false)) e.preventDefault(); } }, { passive: false });
                 unifiedWrapper.addEventListener("touchmove", function (e) { if (isPainting && e.touches.length === 1) { e.preventDefault(); const t = e.touches[0]; const targetEl = document.elementFromPoint(t.clientX, t.clientY); const cell = targetEl ? targetEl.closest("[data-cell]") : null; if (cell) moveAdminGridPaint(cell); } }, { passive: false });
             }
 
-            const endAdminGridPaint = () => { if (isPainting) { isPainting = false; paintVisited.clear(); persistDraft("Edited shift assignments"); } };
+            const endAdminGridPaint = () => {
+                if (isPainting) {
+                    isPainting = false;
+                    paintVisited.clear();
+                    if (pendingAuditChanges.length > 0) {
+                        const monthTag = formatMonthBadge(state.currentMonthKey);
+                        const summary = pendingAuditChanges.length <= 6
+                            ? pendingAuditChanges.join(", ")
+                            : pendingAuditChanges.slice(0, 6).join(", ") + ` (+${pendingAuditChanges.length - 6} more)`;
+                        pendingAuditChanges = [];
+                        persistDraft(`${monthTag} | ${summary}`);
+                    }
+                }
+            };
             window.addEventListener("mouseup", endAdminGridPaint);
             window.addEventListener("touchend", endAdminGridPaint);
 
