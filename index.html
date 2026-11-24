@@ -38,7 +38,9 @@
             .sticky-emp-col { position: static !important; box-shadow: none !important; }
             #rosterScrollContainer { overflow: visible !important; width: 100% !important; }
             #unifiedRosterWrapper { transform-origin: top left; zoom: var(--print-scale, 0.72); }
-            .roster-grid th, .roster-grid td { border: 1.5px solid #000000 !important; }
+            .roster-grid { border-collapse: separate !important; border-spacing: 0 !important; border-top: 1.5px solid #000000 !important; border-left: 1.5px solid #000000 !important; }
+            .roster-grid th, .roster-grid td { border-top: none !important; border-left: none !important; border-right: 1.5px solid #000000 !important; border-bottom: 1.5px solid #000000 !important; }
+            
         }
         }
     </style>
