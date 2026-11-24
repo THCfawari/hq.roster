@@ -1399,38 +1399,62 @@
             }
 
             function runSyncFromPlanner(sourcePath) {
-                if (!canEditCurrentView() || !dbInstance) return;
-                const resEl = document.getElementById("syncLeavesResultText");
-                resEl.className = "text-xs font-extrabold text-center text-slate-600";
-                resEl.textContent = "⏳ Fetching approved leaves...";
-                dbInstance.ref(sourcePath).once("value").then(function (snap) {
-                    const planner = snap.val();
-                    if (!planner || !planner.employees || !planner.entries) { resEl.className = "text-xs font-extrabold text-center text-amber-700"; resEl.textContent = "⚠️ No planner records found."; return; }
-                    pushUndoSnapshot();
-                    const monthRec = ensureMonthRecord(state.currentMonthKey);
-                    const plannerEmps = Object.values(planner.employees);
-                    let count = 0;
-                    state.employees.forEach(rEmp => {
-                        const matched = plannerEmps.find(p => String(p.id) === String(rEmp.id) || (p.name && p.name.trim().toLowerCase() === rEmp.name.trim().toLowerCase()));
-                        if (!matched) return;
-                        const entries = planner.entries[matched.id] || {};
-                        Object.keys(entries).forEach(dateStr => {
-                            if (dateStr.startsWith(state.currentMonthKey)) {
-                                const dayNum = parseInt(dateStr.split("-")[2], 10);
-                                if (!monthRec.assignments[String(rEmp.id)]) monthRec.assignments[String(rEmp.id)] = {};
-                                monthRec.assignments[String(rEmp.id)][String(dayNum)] = "V";
-                                monthRec.syncedLeaves[rEmp.id + "_" + dayNum] = true;
-                                count++;
-                            }
-                        });
-                    });
-                    renderPreservingScroll();
-                    persistDraft("Synced " + count + " leave days from " + sourcePath);
-                    resEl.className = "text-xs font-extrabold text-center text-emerald-700";
-                    resEl.textContent = "✅ Synced " + count + " leave days successfully!";
-                });
-            }
+    if (!canEditCurrentView() || !dbInstance) return;
+    const resEl = document.getElementById("syncLeavesResultText");
+    resEl.className = "text-xs font-extrabold text-center text-slate-600";
+    resEl.textContent = "⏳ Fetching approved leaves & training...";
 
+    dbInstance.ref(sourcePath).once("value").then(function (snap) {
+        const planner = snap.val();
+        if (!planner || !planner.employees || !planner.entries) {
+            resEl.className = "text-xs font-extrabold text-center text-amber-700";
+            resEl.textContent = "⚠️ No planner records found.";
+            return;
+        }
+
+        pushUndoSnapshot();
+        const monthRec = ensureMonthRecord(state.currentMonthKey);
+        const plannerEmps = Object.values(planner.employees);
+        let leaveCount = 0;
+        let trainingCount = 0;
+
+        state.employees.forEach(rEmp => {
+            const matched = plannerEmps.find(p =>
+                (p.name && p.name.trim().toLowerCase() === rEmp.name.trim().toLowerCase()) ||
+                String(p.id) === String(rEmp.id)
+            );
+            if (!matched) return;
+
+            const entries = planner.entries[matched.id] || {};
+            Object.keys(entries).forEach(dateStr => {
+                if (!dateStr.startsWith(state.currentMonthKey)) return;
+
+                const entryVal = entries[dateStr];
+                const entryType = (entryVal && typeof entryVal === "object")
+                    ? String(entryVal.type || "L").toUpperCase()
+                    : String(entryVal || "L").toUpperCase();
+
+                const dayNum = parseInt(dateStr.split("-")[2], 10);
+                if (!monthRec.assignments[String(rEmp.id)]) monthRec.assignments[String(rEmp.id)] = {};
+
+                if (entryType === "T") {
+                    monthRec.assignments[String(rEmp.id)][String(dayNum)] = "T";
+                    delete monthRec.syncedLeaves[rEmp.id + "_" + dayNum];
+                    trainingCount++;
+                } else {
+                    monthRec.assignments[String(rEmp.id)][String(dayNum)] = "V";
+                    monthRec.syncedLeaves[rEmp.id + "_" + dayNum] = true;
+                    leaveCount++;
+                }
+            });
+        });
+
+        renderPreservingScroll();
+        persistDraft("Synced " + leaveCount + " leave(s) & " + trainingCount + " training day(s) from " + sourcePath);
+        resEl.className = "text-xs font-extrabold text-center text-emerald-700";
+        resEl.textContent = "✅ Synced " + leaveCount + " leave(s) (V) & " + trainingCount + " training day(s) (T)!";
+    });
+}
             function handlePrintPDF() {
                 ["changePasswordModal", "editHeaderModal", "editEmpModal", "codeEditorModal", "addCounterRowModal", "clearMonthModal", "syncLeavesModal", "rulesAlertsModal", "readReceiptsModal", "auditLogModal"].forEach(closeModal);
                 const wrapper = document.getElementById("unifiedRosterWrapper");
