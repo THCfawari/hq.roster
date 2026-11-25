@@ -14,15 +14,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-#unifiedRosterWrapper input {
+#unifiedRosterWrapper span.truncate {
+            display: block !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
             color: #000000 !important;
-            -webkit-text-fill-color: #000000 !important;
             font-weight: 800 !important;
-            padding: 0 4px !important;
-            margin: 0 !important;
-            height: 100% !important;
-            line-height: normal !important;
-            background: transparent !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
         }
         }
         body {
