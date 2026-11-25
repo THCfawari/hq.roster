@@ -129,6 +129,18 @@
             .roster-grid { border-collapse: separate !important; border-spacing: 0 !important; border-top: 1.5px solid #000000 !important; border-left: 1.5px solid #000000 !important; }
             .roster-grid th, .roster-grid td { border-top: none !important; border-left: none !important; border-right: 1.5px solid #000000 !important; border-bottom: 1.5px solid #000000 !important; }
         }
+/* إظهار أرقام العدادات السفلية وإلغاء أي إخفاء CSS */
+#unifiedRosterWrapper tr:nth-child(n+15) td:not(:first-child) {
+    font-size: 12px !important;
+    line-height: 28px !important;
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    text-indent: 0 !important;
+    font-weight: 800 !important;
+}
+</style>
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
