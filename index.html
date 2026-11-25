@@ -639,7 +639,7 @@
             // Replace "APIKEY" with your actual Firebase Web API Key
             const DB_BASE_PATH = "monthly_roster_occ_thc";
             const firebaseConfig = {
-                apiKey: "AIzaSyA731dlhUgqoMGG7J_GUBn_H7vxvEPchms",
+                apiKey: "APIKEY",
                 authDomain: "leave-2027.firebaseapp.com",
                 databaseURL: "https://leave-2027-default-rtdb.firebaseio.com",
                 projectId: "leave-2027",
@@ -1093,7 +1093,13 @@
             function computeDailyCounters(daysList, monthRec) {
                 const totalPerDay = {}, codePerDay = {};
                 daysList.forEach(dObj => { totalPerDay[dObj.day] = 0; });
-                state.codes.forEach(c => { codePerDay[c.code] = {}; daysList.forEach(dObj => { codePerDay[c.code][dObj.day] = 0; }); });
+                state.codes.forEach(c => {
+                    const cleanCode = String(c.code || "").trim().toUpperCase();
+                    if (cleanCode) {
+                        codePerDay[cleanCode] = {};
+                        daysList.forEach(dObj => { codePerDay[cleanCode][dObj.day] = 0; });
+                    }
+                });
                 state.employees.forEach(emp => {
                     const empAssign = monthRec.assignments[String(emp.id)] || {};
                     daysList.forEach(dObj => {
@@ -1101,7 +1107,10 @@
                         const assigned = rawCode ? String(rawCode).trim().toUpperCase() : "";
                         if (assigned) {
                             if (ACTIVE_SHIFT_CODES.includes(assigned)) totalPerDay[dObj.day] = (totalPerDay[dObj.day] || 0) + 1;
-                            if (!codePerDay[assigned]) codePerDay[assigned] = {};
+                            if (!codePerDay[assigned]) {
+                                codePerDay[assigned] = {};
+                                daysList.forEach(d => { codePerDay[assigned][d.day] = 0; });
+                            }
                             codePerDay[assigned][dObj.day] = (codePerDay[assigned][dObj.day] || 0) + 1;
                         }
                     });
@@ -1454,30 +1463,33 @@
                 }
                 daysList.forEach(dObj => {
                     const count = totalPerDay[dObj.day] || 0;
-                    html += `<td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: #fecdd3; color: #991b1b; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};" class="text-[11px] sm:text-xs font-black">${count}</td>`;
+                    html += `<td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: #fecdd3; color: #991b1b; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER}; vertical-align: middle;" class="text-[11px] sm:text-xs font-black">${count}</td>`;
                 });
                 html += renderRightSideCells(globalRowIndex);
                 html += `</tr>`;
                 globalRowIndex++;
 
-                activeCounterCodes.forEach(codeStr => {
-                    const def = getCodeDef(codeStr);
+                activeCounterCodes.forEach(rawCounterItem => {
+                    const rawStr = typeof rawCounterItem === "object"
+                        ? (rawCounterItem.code || rawCounterItem.label || rawCounterItem.name || "")
+                        : String(rawCounterItem || "");
+                    const codeStr = rawStr.trim().split(/[\s(]/)[0].trim().toUpperCase();
+                    if (!codeStr) return;
+                    const codesToSum = codeStr.split("+").map(s => s.trim()).filter(Boolean);
+                    const primaryCode = codesToSum[0] || codeStr;
+                    const def = getCodeDef(primaryCode);
                     const isCore = CORE_COUNTER_CODES.includes(codeStr);
                     const txtColor = resolveCodeTextColor(def);
                     const patCls = getPatternClass(def.pattern);
                     const crispCls = (patCls === "pattern-stripes" && txtColor.toLowerCase() === "#000000") ? "crisp-striped-text" : "";
-                    const countsMap = codePerDay[codeStr] || {};
 
                     html += `<tr>`;
                     html += `
-                        <td style="${empStickyStyle} height: ${rowH}px; background-color: ${escapeHtml(def.color)}; color: ${escapeHtml(txtColor)}; border-right: ${BOLD_BORDER};" class="sticky-emp-col px-1.5 sm:px-2.5 text-center ${patCls} ${crispCls}">
-                            <div class="flex items-center justify-between gap-0.5 sm:gap-1">
-                                <span class="w-3 sm:w-4"></span>
-                                <span class="inline-flex items-center justify-center gap-1 truncate">
-                                    <span class="shift-letter">${escapeHtml(def.code)}</span>
-                                    <span class="text-[9.5px] sm:text-[11px] font-bold opacity-85 truncate">(${escapeHtml(def.label)})</span>
-                                </span>
-                                ${(!isCore && editable) ? `<button type="button" data-action="remove-counter-row" data-code="${escapeHtml(def.code)}" class="w-4 h-4 rounded bg-black/20 hover:bg-rose-600 text-white text-[10px] font-black flex items-center justify-center leading-none cursor-pointer no-print shrink-0">×</button>` : `<span class="w-3 sm:w-4"></span>`}
+                        <td style="${empStickyStyle} height: ${rowH}px; background-color: ${escapeHtml(def.color)}; color: ${escapeHtml(txtColor)}; border-right: ${BOLD_BORDER}; vertical-align: middle; text-align: center;" class="sticky-emp-col px-1.5 sm:px-2.5 text-center ${patCls} ${crispCls}">
+                            <div class="flex items-center justify-between gap-1 w-full h-full">
+                                <span class="w-4 shrink-0"></span>
+                                <span class="flex-1 text-center shift-letter leading-none" style="font-size: 13px; font-weight: 800;">${escapeHtml(codeStr)}</span>
+                                ${(!isCore && editable) ? `<button type="button" data-action="remove-counter-row" data-code="${escapeHtml(codeStr)}" class="w-4 h-4 rounded bg-black/20 hover:bg-rose-600 text-white text-[10px] font-black flex items-center justify-center leading-none cursor-pointer no-print shrink-0">×</button>` : `<span class="w-4 shrink-0"></span>`}
                             </div>
                         </td>
                     `;
@@ -1485,12 +1497,16 @@
                         html += `<td colspan="${prevColsCount}" style="height: ${rowH}px; background-color: #f8fafc; border-right: ${BOLD_BORDER};" class="text-[10px] font-bold text-slate-400 no-print">—</td>`;
                     }
                     daysList.forEach(dObj => {
-                        const val = countsMap[dObj.day] || 0;
+                        let val = 0;
+                        codesToSum.forEach(cKey => {
+                            const cMap = codePerDay[cKey];
+                            if (cMap && typeof cMap[dObj.day] === "number") val += cMap[dObj.day];
+                        });
                         const isZeroCoreAlert = isCore && val === 0;
                         const cellBg = isZeroCoreAlert ? "#dc2626" : "#ffffff";
-                        const cellText = isZeroCoreAlert ? "#ffffff" : "#0f172a";
+                        const cellText = isZeroCoreAlert ? "#ffffff" : "#000000";
                         const cellFont = isZeroCoreAlert ? "text-xs sm:text-sm font-black" : "text-[11px] sm:text-xs font-extrabold";
-                        html += `<td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: ${cellBg}; color: ${cellText};" class="${cellFont}">${val}</td>`;
+                        html += `<td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: ${cellBg}; color: ${cellText}; vertical-align: middle;" class="${cellFont}">${val}</td>`;
                     });
                     html += renderRightSideCells(globalRowIndex);
                     html += `</tr>`;
