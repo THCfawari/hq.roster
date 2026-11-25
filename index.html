@@ -677,470 +677,903 @@
             <div id="auditLogListContainer" class="space-y-1.5 text-xs"></div>
         </div>
     </div>
-    <!-- Main App Wrapper -->
-    <div id="protectedAppShell" class="hidden min-h-screen flex flex-col">
-        <!-- Toast Container -->
-        <div id="toastContainer" class="fixed bottom-4 right-3 left-3 sm:left-auto sm:right-5 z-50 flex flex-col gap-2 sm:max-w-md pointer-events-none no-print"></div>
+    <script>
+        (function () {
+            "use strict";
 
-        <!-- Top Application Bar -->
-        <header class="bg-white border-b border-slate-300 sticky top-0 z-30 shadow-xs no-print">
-            <div class="max-w-[1840px] mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-10 h-10 rounded-xl bg-sky-700 text-white flex items-center justify-center shadow-xs shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                            <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path>
-                        </svg>
-                    </div>
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <h1 id="topBarTitle" class="text-sm sm:text-lg font-extrabold text-slate-900 truncate">Monthly Shift Roster — OCC / THC HQ</h1>
-                            <span id="cloudStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                <span id="cloudStatusDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                                <span id="cloudStatusText">Connecting...</span>
-                            </span>
-                            <span id="publishStateBadge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
-                                ● Published Official
-                            </span>
-                            <span id="monthLockedBadge" class="hidden inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                                🔒 Month Locked
-                            </span>
+            // Replace "APIKEY" with your actual Firebase Web API Key
+            const DB_BASE_PATH = "monthly_roster_occ_thc";
+            const firebaseConfig = {
+                apiKey: "AIzaSyA731dlhUgqoMGG7J_GUBn_H7vxvEPchms",
+                authDomain: "leave-2027.firebaseapp.com",
+                databaseURL: "https://leave-2027-default-rtdb.firebaseio.com",
+                projectId: "leave-2027",
+                storageBucket: "leave-2027.firebasestorage.app",
+                messagingSenderId: "843843764501",
+                appId: "1:843843764501:web:5ab35bd6c5e5407978e2d8"
+            };
+
+            const ADMIN_SUPERVISORS = ["fawari", "aalharb", "malreheili", "aalshalawi", "abasaeed", "asofta"];
+            const AUTH_DOMAIN_SUFFIX = "@occ.local";
+            const FORTY_DAYS_MS = 40 * 24 * 60 * 60 * 1000;
+            const CORE_COUNTER_CODES = ["A", "B", "C"];
+            const ACTIVE_SHIFT_CODES = ["A", "B", "C", "D"];
+            const WEEKEND_DAYS = [5, 6];
+
+            const DEFAULT_DIMENSIONS = { empColWidth: 210, dayColWidth: 34, dividerWidth: 24, rowHeight: 32 };
+            const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const MONTHS_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const DAYS_TWO_LETTER = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+            const QUICK_SWATCHES = [
+                "#fff59d", "#bae6fd", "#9ca3af", "#fed7aa", "#60a5fa",
+                "#ef4444", "#fbcfe8", "#1e3a8a", "#f59e0b", "#dc2626",
+                "#2563eb", "#475569", "#86efac", "#10b981", "#c084fc",
+                "#f472b6", "#14b8a6", "#facc15", "#fb923c", "#0f172a"
+            ];
+
+            const DEFAULT_CODES = [
+                { code: "A",  label: "07:00-15:00",      color: "#fff59d", textColor: "#000000", pattern: "solid",   core: true },
+                { code: "B",  label: "15:00-23:00",      color: "#bae6fd", textColor: "#000000", pattern: "solid",   core: true },
+                { code: "C",  label: "23:00-07:00",      color: "#9ca3af", textColor: "#000000", pattern: "solid",   core: true },
+                { code: "D",  label: "10:00-18:00",      color: "#fed7aa", textColor: "#000000", pattern: "solid",   core: false },
+                { code: "O",  label: "Office duty",      color: "#60a5fa", textColor: "#000000", pattern: "solid",   core: false },
+                { code: "S",  label: "Sick",             color: "#ef4444", textColor: "#000000", pattern: "stripes", core: false },
+                { code: "V",  label: "Vacation",         color: "#fbcfe8", textColor: "#000000", pattern: "solid",   core: false },
+                { code: "T",  label: "Training / Test",  color: "#1e3a8a", textColor: "#ffffff", pattern: "solid",   core: false },
+                { code: "MT", label: "Meeting / Task",   color: "#f59e0b", textColor: "#000000", pattern: "solid",   core: false },
+                { code: "E",  label: "Family reason",    color: "#dc2626", textColor: "#ffffff", pattern: "grid",    core: false },
+                { code: "SW", label: "Shift Swap",       color: "#2563eb", textColor: "#ffffff", pattern: "solid",   core: false },
+                { code: "CD", label: "Compensation Day", color: "#475569", textColor: "#ffffff", pattern: "solid",   core: false }
+            ];
+
+            function createDefaultEmployees(count) {
+                const list = [];
+                for (let i = 1; i <= count; i++) list.push({ id: i, name: "Employee " + i, username: "" });
+                return list;
+            }
+
+            const state = {
+                currentMonthKey: "2026-12",
+                filterEmpId: "all",
+                searchQuery: "",
+                isAdmin: false,
+                viewingDraft: true,
+                showPrevWeek: true,
+                arrangeStaffMode: false,
+                activeBrush: "A",
+                departmentTitle: "OCC / THC HQ",
+                dimensions: { ...DEFAULT_DIMENSIONS },
+                employees: createDefaultEmployees(12),
+                codes: JSON.parse(JSON.stringify(DEFAULT_CODES)),
+                separationRules: [],
+                months: {}
+            };
+
+            let currentAuthUser = null, currentUsername = "", dbInstance = null, authInstance = null;
+            let publishedRef = null, draftRef = null, publishedCache = null, draftCache = null;
+            // Safety guard: blocks ANY write to Firebase until initial cloud data resolves
+            let initialCloudLoaded = false;
+            let undoStack = [], redoStack = [], isPainting = false, paintOp = "apply", paintVisited = new Set(), persistDimTimer = null;
+            let pendingAuditChanges = [];
+
+            function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+            function clampNumber(val, min, max, fallback) { const n = Number(val); return Number.isNaN(n) ? fallback : Math.max(min, Math.min(max, Math.round(n))); }
+
+            function getContrastTextColor(hex) {
+                const clean = String(hex || "#ffffff").replace("#", "");
+                if (clean.length !== 6) return "#000000";
+                const r = parseInt(clean.substring(0, 2), 16), g = parseInt(clean.substring(2, 4), 16), b = parseInt(clean.substring(4, 6), 16);
+                return ((0.299 * r + 0.587 * g + 0.114 * b) / 255) > 0.56 ? "#000000" : "#ffffff";
+            }
+
+            function resolveCodeTextColor(codeObj) {
+                if (codeObj && /^#[0-9A-Fa-f]{6}$/.test(String(codeObj.textColor || ""))) return String(codeObj.textColor);
+                if (codeObj && String(codeObj.code).toUpperCase() === "S") return "#000000";
+                return getContrastTextColor(codeObj ? codeObj.color : "#ffffff");
+            }
+
+            function getPatternClass(pattern) {
+                if (pattern === "stripes" || pattern === "v-stripes") return "pattern-stripes";
+                if (pattern === "grid") return "pattern-grid";
+                return "";
+            }
+
+            function parseMonthKey(monthKey) {
+                const parts = String(monthKey || "2026-12").split("-");
+                const year = Math.max(2026, Math.min(2030, Number(parts[0]) || 2026));
+                let monthIndex = Math.max(0, Math.min(11, (Number(parts[1]) || 12) - 1));
+                if (year === 2026 && monthIndex < 11) monthIndex = 11;
+                return { year, monthIndex };
+            }
+
+            function normalizeRosterMonthKey(monthKey) { const { year, monthIndex } = parseMonthKey(monthKey); return year + "-" + String(monthIndex + 1).padStart(2, "0"); }
+            function formatMonthBadge(monthKey) { const { year, monthIndex } = parseMonthKey(monthKey); return MONTHS_SHORT[monthIndex] + "-" + String(year).slice(-2); }
+
+            function getDaysInMonthKey(monthKey) {
+                const { year, monthIndex } = parseMonthKey(monthKey);
+                const count = new Date(year, monthIndex + 1, 0).getDate();
+                const days = [];
+                for (let d = 1; d <= count; d++) {
+                    const dow = new Date(year, monthIndex, d).getDay();
+                    days.push({ day: d, dow: dow, abbr: DAYS_TWO_LETTER[dow], isWeekend: WEEKEND_DAYS.includes(dow) });
+                }
+                return days;
+            }
+
+            function getPrevMonthLast7Days(monthKey) {
+                const { year, monthIndex } = parseMonthKey(monthKey);
+                const prevDate = new Date(year, monthIndex - 1, 1);
+                const prevYear = prevDate.getFullYear();
+                const prevMonthIdx = prevDate.getMonth();
+                const prevKey = prevYear + "-" + String(prevMonthIdx + 1).padStart(2, "0");
+                if (prevKey < "2026-12") return null;
+
+                const prevDaysCount = new Date(prevYear, prevMonthIdx + 1, 0).getDate();
+                const prevRec = state.months[prevKey] || { assignments: {} };
+                const days = [];
+                for (let d = prevDaysCount - 6; d <= prevDaysCount; d++) {
+                    const dow = new Date(prevYear, prevMonthIdx, d).getDay();
+                    days.push({ day: d, abbr: DAYS_TWO_LETTER[dow], isWeekend: WEEKEND_DAYS.includes(dow) });
+                }
+                return { prevKey: prevKey, prevLabel: formatMonthBadge(prevKey), days: days, assignments: prevRec.assignments || {} };
+            }
+
+            function populateMonthSelectDropdown(selectedYear) {
+                const monthSel = document.getElementById("monthPartSelect");
+                if (!monthSel) return;
+                const yNum = Number(selectedYear) || 2026;
+                const startIdx = yNum === 2026 ? 11 : 0;
+                const opts = [];
+                for (let idx = startIdx; idx < 12; idx++) opts.push(`<option value="${String(idx + 1).padStart(2, "0")}">${MONTHS_FULL[idx]} (${MONTHS_SHORT[idx]})</option>`);
+                monthSel.innerHTML = opts.join("");
+            }
+
+            function syncDateNavigatorInputs() {
+                state.currentMonthKey = normalizeRosterMonthKey(state.currentMonthKey);
+                const [yStr, mStr] = state.currentMonthKey.split("-");
+                const yearSel = document.getElementById("yearPartSelect"), monthSel = document.getElementById("monthPartSelect");
+                if (yearSel && yearSel.value !== yStr) yearSel.value = yStr;
+                populateMonthSelectDropdown(yStr);
+                if (monthSel) monthSel.value = mStr;
+                const prevBtn = document.getElementById("prevMonthBtn"), nextBtn = document.getElementById("nextMonthBtn");
+                if (prevBtn) prevBtn.disabled = (state.currentMonthKey === "2026-12");
+                if (nextBtn) nextBtn.disabled = (state.currentMonthKey === "2030-12");
+            }
+
+            function ensureMonthRecord(monthKey) {
+                const normKey = normalizeRosterMonthKey(monthKey);
+                if (!state.months[normKey] || typeof state.months[normKey] !== "object") {
+                    state.months[normKey] = { version: "V1", locked: false, counterRows: [], assignments: {}, syncedLeaves: {}, overrides: {} };
+                }
+                const rec = state.months[normKey];
+                if (!rec.version) rec.version = "V1";
+                rec.locked = Boolean(rec.locked);
+                if (!Array.isArray(rec.counterRows)) rec.counterRows = [];
+                if (!rec.assignments || typeof rec.assignments !== "object") rec.assignments = {};
+                if (!rec.syncedLeaves || typeof rec.syncedLeaves !== "object") rec.syncedLeaves = {};
+                if (!rec.overrides || typeof rec.overrides !== "object") rec.overrides = {};
+                return rec;
+            }
+
+            function getCodeDef(codeStr) {
+                return state.codes.find(c => c.code === codeStr) || { code: codeStr, label: codeStr, color: "#e2e8f0", textColor: "#000000", pattern: "solid", core: false };
+            }
+
+            function canEditCurrentView() { return state.isAdmin && state.viewingDraft; }
+
+            function updateStatusBadge(mode) {
+                const badge = document.getElementById("cloudStatusBadge"), dot = document.getElementById("cloudStatusDot"), text = document.getElementById("cloudStatusText");
+                if (!badge || !dot || !text) return;
+                if (mode === "connected") {
+                    badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200";
+                    dot.className = "w-2 h-2 rounded-full bg-emerald-500";
+                    text.textContent = "Live Cloud Sync";
+                } else {
+                    badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200";
+                    dot.className = "w-2 h-2 rounded-full bg-amber-500";
+                    text.textContent = "Offline";
+                }
+            }
+
+            function applyPayloadToState(data) {
+                if (!data || typeof data !== "object") return;
+                if (data.departmentTitle && String(data.departmentTitle).trim()) state.departmentTitle = String(data.departmentTitle).trim();
+                if (data.dimensions && typeof data.dimensions === "object") {
+                    state.dimensions = {
+                        empColWidth: clampNumber(data.dimensions.empColWidth, 140, 360, DEFAULT_DIMENSIONS.empColWidth),
+                        dayColWidth: clampNumber(data.dimensions.dayColWidth, 26, 56, DEFAULT_DIMENSIONS.dayColWidth),
+                        dividerWidth: clampNumber(data.dimensions.dividerWidth, 12, 48, DEFAULT_DIMENSIONS.dividerWidth),
+                        rowHeight: clampNumber(data.dimensions.rowHeight, 24, 52, DEFAULT_DIMENSIONS.rowHeight)
+                    };
+                }
+                if (Array.isArray(data.employees) && data.employees.length > 0) {
+                    state.employees = data.employees.map((emp, idx) => {
+                        if (typeof emp === "string") {
+                            return { id: idx + 1, name: emp.trim() || ("Employee " + (idx + 1)), username: "" };
+                        }
+                        const resolvedName = (emp.name || emp.fullName || emp.employeeName || "").toString().trim();
+                        return {
+                            id: Number(emp.id) || (idx + 1),
+                            name: resolvedName || ("Employee " + (idx + 1)),
+                            username: emp.username ? String(emp.username).trim().toLowerCase() : ""
+                        };
+                    });
+                }
+                if (Array.isArray(data.codes) && data.codes.length > 0) {
+                    state.codes = data.codes.filter(c => c && c.code).map(c => {
+                        const codeUpper = String(c.code).toUpperCase().slice(0, 3);
+                        const validBg = /^#[0-9A-Fa-f]{6}$/.test(String(c.color)) ? String(c.color) : "#e2e8f0";
+                        const validText = /^#[0-9A-Fa-f]{6}$/.test(String(c.textColor || "")) ? String(c.textColor) : (codeUpper === "S" ? "#000000" : getContrastTextColor(validBg));
+                        const patNorm = (c.pattern === "stripes" || c.pattern === "v-stripes") ? "stripes" : (c.pattern === "grid" ? "grid" : "solid");
+                        const resolvedLabel = (c.label || c.desc || c.description || c.time || codeUpper).toString().trim();
+                        return { code: codeUpper, label: resolvedLabel, color: validBg, textColor: validText, pattern: patNorm, core: CORE_COUNTER_CODES.includes(codeUpper) };
+                    });
+                }
+                state.separationRules = Array.isArray(data.separationRules) ? data.separationRules : [];
+                if (data.months && typeof data.months === "object") {
+                    const normalizedMonths = {};
+                    Object.keys(data.months).forEach(mKey => {
+                        const rawM = data.months[mKey];
+                        if (!rawM || typeof rawM !== "object") return;
+                        const assign = {};
+                        if (rawM.assignments && typeof rawM.assignments === "object") {
+                            Object.keys(rawM.assignments).forEach(empId => {
+                                const empRow = rawM.assignments[empId];
+                                if (!empRow || typeof empRow !== "object") return;
+                                assign[empId] = {};
+                                Object.keys(empRow).forEach(dKey => { if (empRow[dKey]) assign[empId][String(dKey)] = String(empRow[dKey]).trim().toUpperCase(); });
+                            });
+                        }
+                        normalizedMonths[mKey] = {
+                            version: rawM.version ? String(rawM.version) : "V1",
+                            locked: Boolean(rawM.locked),
+                            counterRows: Array.isArray(rawM.counterRows) ? rawM.counterRows.map(c => String(c).trim().toUpperCase()) : [],
+                            assignments: assign,
+                            syncedLeaves: (rawM.syncedLeaves && typeof rawM.syncedLeaves === "object") ? rawM.syncedLeaves : {},
+                            overrides: (rawM.overrides && typeof rawM.overrides === "object") ? rawM.overrides : {}
+                        };
+                    });
+                    state.months = normalizedMonths;
+                }
+            }
+
+            function buildExportPayload() {
+                return {
+                    departmentTitle: state.departmentTitle,
+                    dimensions: state.dimensions,
+                    employees: state.employees.map(emp => ({ id: emp.id, name: emp.name, username: emp.username || "" })),
+                    codes: state.codes.map(c => ({ code: c.code, label: c.label, color: c.color, textColor: resolveCodeTextColor(c), pattern: c.pattern || "solid", core: CORE_COUNTER_CODES.includes(c.code) })),
+                    separationRules: state.separationRules || [],
+                    months: state.months,
+                    updatedBy: currentUsername,
+                    updatedAt: Date.now()
+                };
+            }
+
+            function persistDraft(auditNote) {
+                if (!canEditCurrentView() || !draftRef || !initialCloudLoaded) return;
+                const payload = buildExportPayload();
+                draftCache = JSON.parse(JSON.stringify(payload));
+                draftRef.set(payload).catch(() => updateStatusBadge("offline"));
+                if (auditNote) logAuditEvent(auditNote);
+            }
+
+            function scheduleDimensionPersist() {
+                if (!canEditCurrentView() || !initialCloudLoaded) return;
+                if (persistDimTimer) clearTimeout(persistDimTimer);
+                persistDimTimer = setTimeout(() => persistDraft("Updated layout dimensions"), 400);
+            }
+
+            function publishDraftToOfficial() {
+                if (!state.isAdmin || !publishedRef || !draftRef || !initialCloudLoaded) return;
+                if (!state.viewingDraft) { showToast("Switch to Draft mode first before publishing.", "warning"); return; }
+                const monthRec = ensureMonthRecord(state.currentMonthKey);
+                const pubVer = (publishedCache && publishedCache.months && publishedCache.months[state.currentMonthKey]) ? publishedCache.months[state.currentMonthKey].version : null;
+                if (pubVer) {
+                    const match = String(pubVer).match(/^([A-Za-z]*)(\d+)$/);
+                    monthRec.version = match ? ((match[1] || "V") + (Number(match[2]) + 1)) : "V2";
+                }
+                const payload = buildExportPayload();
+                draftCache = JSON.parse(JSON.stringify(payload));
+                publishedCache = JSON.parse(JSON.stringify(payload));
+                draftRef.set(payload);
+                publishedRef.set(payload).then(() => {
+                    renderPreservingScroll();
+                    logAuditEvent("Published & Approved " + formatMonthBadge(state.currentMonthKey) + " as " + monthRec.version);
+                    showToast("Published " + formatMonthBadge(state.currentMonthKey) + " (" + monthRec.version + ") to all HQ staff!", "success");
+                }).catch(() => showToast("Publish failed. Check permissions.", "error"));
+            }
+
+            function logAuditEvent(actionText) {
+                if (!dbInstance || !currentUsername) return;
+                const ts = Date.now();
+                dbInstance.ref(DB_BASE_PATH + "/audit_log/" + ts).set({ user: currentUsername, action: actionText, timeFormatted: new Date(ts).toLocaleString("en-GB"), timestamp: ts });
+            }
+
+            function recordStaffReadReceipt() {
+                if (!dbInstance || !currentUsername) return;
+                const monthRec = ensureMonthRecord(state.currentMonthKey), ver = monthRec.version || "V1", now = Date.now();
+                const key = currentUsername + "_" + state.currentMonthKey + "_" + ver;
+                dbInstance.ref(DB_BASE_PATH + "/read_receipts/" + key).set({ user: currentUsername, monthKey: state.currentMonthKey, monthLabel: formatMonthBadge(state.currentMonthKey), version: ver, timestamp: now, timeFormatted: new Date(now).toLocaleString("en-GB") });
+            }
+
+            function pushUndoSnapshot() {
+                if (!canEditCurrentView() || !initialCloudLoaded) return;
+                undoStack.push(JSON.stringify(buildExportPayload()));
+                if (undoStack.length > 20) undoStack.shift();
+                redoStack = [];
+                updateUndoRedoButtons();
+            }
+
+            function performUndo() {
+                if (!canEditCurrentView() || undoStack.length === 0) return;
+                redoStack.push(JSON.stringify(buildExportPayload()));
+                applyPayloadToState(JSON.parse(undoStack.pop()));
+                updateUndoRedoButtons();
+                renderPreservingScroll();
+                persistDraft("Undo action");
+                showToast("Undid last change.", "info");
+            }
+
+            function performRedo() {
+                if (!canEditCurrentView() || redoStack.length === 0) return;
+                undoStack.push(JSON.stringify(buildExportPayload()));
+                applyPayloadToState(JSON.parse(redoStack.pop()));
+                updateUndoRedoButtons();
+                renderPreservingScroll();
+                persistDraft("Redo action");
+                showToast("Redid change.", "info");
+            }
+
+            function updateUndoRedoButtons() {
+                const uBtn = document.getElementById("undoBtn"), rBtn = document.getElementById("redoBtn");
+                if (uBtn) uBtn.disabled = undoStack.length === 0;
+                if (rBtn) rBtn.disabled = redoStack.length === 0;
+            }
+
+            function analyzeRosterAlerts(monthRec, daysList) {
+                const { year, monthIndex } = parseMonthKey(state.currentMonthKey);
+                const prevDate = new Date(year, monthIndex - 1, 1);
+                const prevKey = prevDate.getFullYear() + "-" + String(prevDate.getMonth() + 1).padStart(2, "0");
+                const prevDaysCount = new Date(year, monthIndex, 0).getDate();
+                const prevRec = state.months[prevKey] || { assignments: {} };
+
+                const alerts = [], flags = {};
+                const ensureFlag = (ck) => { if (!flags[ck]) flags[ck] = { fatigue: false, conflict: false, overridden: false }; return flags[ck]; };
+
+                state.employees.forEach(emp => {
+                    const empAssign = monthRec.assignments[String(emp.id)] || {};
+                    const prevAssign = (prevRec.assignments && prevRec.assignments[String(emp.id)]) || {};
+                    daysList.forEach(dObj => {
+                        const d = dObj.day;
+                        if (empAssign[String(d)] !== "A") return;
+                        let restDays = 0, foundC = false;
+                        for (let back = 1; back <= 3; back++) {
+                            const checkD = d - back;
+                            const code = checkD >= 1 ? (empAssign[String(checkD)] || "") : (prevAssign[String(prevDaysCount + checkD)] || "");
+                            if (code === "C") { foundC = true; break; }
+                            if (!code) restDays++; else break;
+                        }
+                        if (foundC && restDays <= 2) {
+                            const ck = emp.id + "_" + d, fl = ensureFlag(ck);
+                            fl.fatigue = true; fl.overridden = Boolean(monthRec.overrides[ck]);
+                            alerts.push({ ck1: ck, ck2: null, text: emp.name + " — Day " + d + ": C → A after " + restDays + " rest day(s)", overridden: fl.overridden });
+                        }
+                    });
+                });
+
+                (state.separationRules || []).forEach(rule => {
+                    const a1 = monthRec.assignments[String(rule.emp1)] || {}, a2 = monthRec.assignments[String(rule.emp2)] || {};
+                    const e1 = state.employees.find(e => String(e.id) === String(rule.emp1)), e2 = state.employees.find(e => String(e.id) === String(rule.emp2));
+                    if (!e1 || !e2) return;
+                    daysList.forEach(dObj => {
+                        const d = dObj.day, c1 = a1[String(d)], c2 = a2[String(d)];
+                        if (c1 && c2 && c1 === c2) {
+                            const ck1 = e1.id + "_" + d, ck2 = e2.id + "_" + d, ov = Boolean(monthRec.overrides[ck1] || monthRec.overrides[ck2]);
+                            ensureFlag(ck1).conflict = true; ensureFlag(ck1).overridden = ov;
+                            ensureFlag(ck2).conflict = true; ensureFlag(ck2).overridden = ov;
+                            alerts.push({ ck1: ck1, ck2: ck2, text: "Day " + d + " (Shift " + c1 + "): " + e1.name + " & " + e2.name + " scheduled together", overridden: ov });
+                        }
+                    });
+                });
+
+                return { alerts, flags };
+            }
+
+            function toggleCellOverride(ck1, ck2) {
+                if (!canEditCurrentView()) return;
+                pushUndoSnapshot();
+                const monthRec = ensureMonthRecord(state.currentMonthKey);
+                const nextState = !monthRec.overrides[ck1];
+                if (nextState) { monthRec.overrides[ck1] = true; if (ck2) monthRec.overrides[ck2] = true; }
+                else { delete monthRec.overrides[ck1]; if (ck2) delete monthRec.overrides[ck2]; }
+                renderPreservingScroll();
+                persistDraft((nextState ? "Approved" : "Revoked") + " alert override (" + ck1 + ")");
+                if (!document.getElementById("rulesAlertsModal").classList.contains("hidden")) renderRulesModalContent();
+            }
+
+            function recordCellAuditChange(empId, dayNum, oldVal, newVal) {
+                const emp = state.employees.find(e => String(e.id) === String(empId));
+                const empName = emp ? emp.name : ("ID#" + empId);
+                const fromTxt = oldVal || "Empty";
+                const toTxt = newVal || "Cleared";
+                pendingAuditChanges.push(`${empName}: Day ${dayNum} (${fromTxt} → ${toTxt})`);
+            }
+
+            function applyPaintToCell(empId, dayNum, forcedOp) {
+                if (!canEditCurrentView() || !initialCloudLoaded) return false;
+                const monthRec = ensureMonthRecord(state.currentMonthKey);
+                if (monthRec.locked) { showToast("This month is locked. Unlock it first to edit.", "error"); return false; }
+                const empKey = String(empId), dKey = String(dayNum), cellKey = empKey + "_" + dKey;
+                if (!monthRec.assignments[empKey]) monthRec.assignments[empKey] = {};
+                const currentVal = monthRec.assignments[empKey][dKey] || null;
+
+                if (state.activeBrush === "CLEAR" || forcedOp === "clear") {
+                    if (!currentVal) return false;
+                    delete monthRec.assignments[empKey][dKey];
+                    delete monthRec.syncedLeaves[cellKey];
+                    delete monthRec.overrides[cellKey];
+                    recordCellAuditChange(empId, dayNum, currentVal, null);
+                    return true;
+                }
+
+                const op = forcedOp || (currentVal === state.activeBrush ? "clear" : "apply");
+                if (op === "clear") {
+                    if (!currentVal) return false;
+                    delete monthRec.assignments[empKey][dKey];
+                    delete monthRec.syncedLeaves[cellKey];
+                    delete monthRec.overrides[cellKey];
+                    recordCellAuditChange(empId, dayNum, currentVal, null);
+                    return true;
+                }
+
+                if (currentVal === state.activeBrush) return false;
+                monthRec.assignments[empKey][dKey] = state.activeBrush;
+                delete monthRec.syncedLeaves[cellKey];
+                recordCellAuditChange(empId, dayNum, currentVal, state.activeBrush);
+                return true;
+            }
+
+            function computeDailyCounters(daysList, monthRec) {
+                const totalPerDay = {}, codePerDay = {};
+                daysList.forEach(dObj => { totalPerDay[dObj.day] = 0; });
+                state.codes.forEach(c => {
+                    const cleanCode = String(c.code || "").trim().toUpperCase();
+                    if (cleanCode) {
+                        codePerDay[cleanCode] = {};
+                        daysList.forEach(dObj => { codePerDay[cleanCode][dObj.day] = 0; });
+                    }
+                });
+                state.employees.forEach(emp => {
+                    const empAssign = monthRec.assignments[String(emp.id)] || {};
+                    daysList.forEach(dObj => {
+                        const rawCode = empAssign[String(dObj.day)];
+                        const assigned = rawCode ? String(rawCode).trim().toUpperCase() : "";
+                        if (assigned) {
+                            if (ACTIVE_SHIFT_CODES.includes(assigned)) totalPerDay[dObj.day] = (totalPerDay[dObj.day] || 0) + 1;
+                            if (!codePerDay[assigned]) {
+                                codePerDay[assigned] = {};
+                                daysList.forEach(d => { codePerDay[assigned][d.day] = 0; });
+                            }
+                            codePerDay[assigned][dObj.day] = (codePerDay[assigned][dObj.day] || 0) + 1;
+                        }
+                    });
+                });
+                return { totalPerDay, codePerDay };
+            }
+
+            function renderPreservingScroll() {
+                const scrollEl = document.getElementById("rosterScrollContainer");
+                const savedLeft = scrollEl ? scrollEl.scrollLeft : 0;
+                renderAll();
+                const newScrollEl = document.getElementById("rosterScrollContainer");
+                if (newScrollEl) newScrollEl.scrollLeft = savedLeft;
+            }
+
+            function syncDimensionInputs() {
+                const dims = state.dimensions;
+                [
+                    ["dimEmpWidthRange", "dimEmpWidthNum", dims.empColWidth],
+                    ["dimDayWidthRange", "dimDayWidthNum", dims.dayColWidth],
+                    ["dimDividerWidthRange", "dimDividerWidthNum", dims.dividerWidth],
+                    ["dimRowHeightRange", "dimRowHeightNum", dims.rowHeight]
+                ].forEach(item => {
+                    const r = document.getElementById(item[0]), n = document.getElementById(item[1]);
+                    if (r) r.value = item[2];
+                    if (n) n.value = item[2];
+                });
+                const deptInp = document.getElementById("adminDeptTitleInput");
+                if (deptInp && document.activeElement !== deptInp) deptInp.value = state.departmentTitle;
+            }
+
+            function renderAll() {
+                const monthRec = ensureMonthRecord(state.currentMonthKey);
+                renderTopControls(monthRec);
+                syncDimensionInputs();
+                renderAdminBrushPalette();
+                renderUnifiedRosterTable(monthRec);
+            }
+
+            function renderTopControls(monthRec) {
+                syncDateNavigatorInputs();
+                const topTitle = document.getElementById("topBarTitle");
+                if (topTitle) topTitle.textContent = "Monthly Shift Roster — " + state.departmentTitle;
+                const userSub = document.getElementById("loggedUserSubtitle");
+                if (userSub && currentUsername) userSub.textContent = "Signed in as: " + currentUsername + " (" + (state.isAdmin ? "Supervisor" : "Staff") + ") • Dec 2026 – Dec 2030";
+
+                const pubBadge = document.getElementById("publishStateBadge");
+                const toggleDraftPubBtn = document.getElementById("toggleDraftPubBtn");
+                if (pubBadge) {
+                    if (state.isAdmin && state.viewingDraft) {
+                        pubBadge.textContent = "🟡 Draft Mode";
+                        pubBadge.className = "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-300";
+                        if (toggleDraftPubBtn) toggleDraftPubBtn.textContent = "👁 View Published";
+                    } else {
+                        pubBadge.textContent = "🟢 Published Official";
+                        pubBadge.className = "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300";
+                        if (toggleDraftPubBtn) toggleDraftPubBtn.textContent = "✏️ Back to Draft";
+                    }
+                }
+
+                const lockedBadge = document.getElementById("monthLockedBadge");
+                if (lockedBadge) lockedBadge.classList.toggle("hidden", !monthRec.locked);
+
+                const empSelect = document.getElementById("empFilterSelect");
+                if (empSelect) {
+                    let opts = `<option value="all">All Staff (${state.employees.length})</option>`;
+                    state.employees.forEach(emp => {
+                        const sel = String(state.filterEmpId) === String(emp.id) ? "selected" : "";
+                        opts += `<option value="${emp.id}" ${sel}>${escapeHtml(emp.name)}</option>`;
+                    });
+                    empSelect.innerHTML = opts;
+                }
+
+                const adminHeader = document.getElementById("adminHeaderControls");
+                const adminToolbar = document.getElementById("adminPaintToolbar");
+                const lockMonthBtn = document.getElementById("lockMonthBtn");
+                const togglePrevBtn = document.getElementById("togglePrevWeekBtn");
+
+                if (state.isAdmin) {
+                    adminHeader.classList.remove("hidden");
+                    adminToolbar.classList.toggle("hidden", !state.viewingDraft);
+                    if (lockMonthBtn) lockMonthBtn.textContent = monthRec.locked ? "Unlock Month" : "Lock Month";
+                    if (togglePrevBtn) {
+                        const prevData = getPrevMonthLast7Days(state.currentMonthKey);
+                        const active = state.showPrevWeek && Boolean(prevData);
+                        togglePrevBtn.disabled = !prevData;
+                        togglePrevBtn.textContent = active ? "👁 Hide Prev 7d" : "👁 Show Prev 7d";
+                        togglePrevBtn.className = active
+                            ? "px-3 py-1.5 rounded-xl text-xs font-extrabold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition cursor-pointer"
+                            : "px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed";
+                    }
+                } else {
+                    adminHeader.classList.add("hidden");
+                    adminToolbar.classList.add("hidden");
+                }
+            }
+
+            function renderAdminBrushPalette() {
+                const container = document.getElementById("adminBrushPalette");
+                if (!container) return;
+
+                let html = state.codes.map(c => {
+                    const isSelected = state.activeBrush === c.code;
+                    const textColor = resolveCodeTextColor(c);
+                    const patternCls = getPatternClass(c.pattern);
+                    const crispCls = (patternCls === "pattern-stripes" && textColor.toLowerCase() === "#000000") ? "crisp-striped-text" : "";
+                    const ringCls = isSelected ? "ring-2 ring-offset-1 ring-slate-900 scale-105 shadow-sm" : "opacity-90 hover:opacity-100";
+                    return `
+                        <button type="button" data-action="select-brush" data-code="${escapeHtml(c.code)}"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-800 text-xs font-extrabold transition cursor-pointer ${ringCls}"
+                            style="background-color: ${escapeHtml(c.color)}; color: ${escapeHtml(textColor)};">
+                            <span class="px-1.5 py-0.2 rounded bg-black/10 shift-letter ${patternCls} ${crispCls}">${escapeHtml(c.code)}</span>
+                            <span class="text-[11px] font-bold">${escapeHtml(c.label)}</span>
+                        </button>
+                    `;
+                }).join("");
+
+                const clearSelected = state.activeBrush === "CLEAR";
+                html += `
+                    <button type="button" data-action="select-brush" data-code="CLEAR"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-extrabold transition cursor-pointer ${clearSelected ? "bg-slate-900 text-white border-slate-900 ring-2 ring-offset-1 ring-slate-900" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"}">
+                        <span>Eraser</span>
+                    </button>
+                `;
+                container.innerHTML = html;
+            }
+
+            function renderUnifiedRosterTable(monthRec) {
+                const container = document.getElementById("unifiedRosterWrapper");
+                if (!container) return;
+
+                const isMobile = window.innerWidth <= 640;
+                const editable = canEditCurrentView();
+                const dims = state.dimensions;
+
+                const empColW = isMobile ? 135 : dims.empColWidth;
+                const dayColW = isMobile ? 28 : dims.dayColWidth;
+                const prevDayColW = isMobile ? 24 : Math.max(26, dims.dayColWidth - 4);
+                const divW = isMobile ? 12 : dims.dividerWidth;
+                const rowH = isMobile ? 28 : dims.rowHeight;
+                const legendCodeW = isMobile ? 34 : 42;
+                const legendLabelW = isMobile ? 140 : 185;
+                const BOLD_BORDER = "2.5px solid #000000";
+
+                const prevWeekData = (state.isAdmin && state.showPrevWeek) ? getPrevMonthLast7Days(state.currentMonthKey) : null;
+                const prevColsCount = prevWeekData ? prevWeekData.days.length : 0;
+
+                const daysList = getDaysInMonthKey(state.currentMonthKey);
+                const { totalPerDay, codePerDay } = computeDailyCounters(daysList, monthRec);
+                const { flags } = analyzeRosterAlerts(monthRec, daysList);
+
+                const query = state.searchQuery.trim().toLowerCase();
+                let visibleEmployees = state.filterEmpId === "all" ? state.employees : state.employees.filter(e => String(e.id) === String(state.filterEmpId));
+                if (query) visibleEmployees = visibleEmployees.filter(e => e.name.toLowerCase().includes(query));
+
+                const activeCounterCodes = [...CORE_COUNTER_CODES, ...monthRec.counterRows.filter(c => !CORE_COUNTER_CODES.includes(c))];
+                const legendRows = state.codes.map(c => ({ type: "code", codeObj: c }));
+                if (editable) legendRows.push({ type: "add-btn" });
+
+                const totalTbodyRows = visibleEmployees.length + 1 + activeCounterCodes.length + (editable ? 1 : 0);
+                while (legendRows.length < totalTbodyRows) legendRows.push({ type: "bottom-blue" });
+
+                const legendCount = legendRows.filter(r => r.type !== "bottom-blue").length;
+                const bottomBlueCount = legendRows.length - legendCount;
+                const totalTableWidth = empColW + (prevColsCount * prevDayColW) + (daysList.length * dayColW) + divW + legendCodeW + legendLabelW;
+                const empStickyStyle = `width: ${empColW}px; min-width: ${empColW}px; max-width: ${empColW}px;`;
+                const headerEditAttr = editable ? `data-action="open-edit-header"` : "";
+                const headerCursor = editable ? "cursor-pointer hover:brightness-95" : "";
+
+                let html = `<table class="roster-grid text-center" style="width: ${totalTableWidth}px; border: ${BOLD_BORDER};">`;
+                html += `<thead><tr style="border-bottom: ${BOLD_BORDER};">`;
+                html += `
+                    <th ${headerEditAttr} style="${empStickyStyle} background-color: #a3c9b8; border-right: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"
+                        class="sticky-emp-col py-1.5 px-1.5 sm:px-2.5 text-center text-[11px] sm:text-sm font-black text-slate-950 tracking-wide ${headerCursor}">
+                        <div class="flex items-center justify-center gap-1 truncate">
+                            <span class="truncate">${escapeHtml(state.departmentTitle)}</span>
+                            ${editable ? `<span class="text-[10px] text-slate-700 font-bold no-print shrink-0">✎</span>` : ""}
                         </div>
-                        <p id="loggedUserSubtitle" class="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate">Unified Shift Schedule • Dec 2026 – Dec 2030</p>
-                    </div>
-                </div>
+                    </th>
+                `;
 
-                <!-- Navigation & Action Controls -->
-                <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
-                    <div class="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-300 shadow-2xs">
-                        <button type="button" id="prevMonthBtn" data-action="prev-month"
-                            class="w-7 h-7 rounded-lg bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 flex items-center justify-center text-xs font-black text-slate-700 transition cursor-pointer disabled:opacity-40">
-                            ◀
-                        </button>
-                        <select id="monthPartSelect" aria-label="Select Month"
-                            class="h-7 px-2 rounded-lg bg-white border border-slate-200 text-xs font-extrabold text-blue-700 focus:outline-none cursor-pointer"></select>
-                        <select id="yearPartSelect" aria-label="Select Year"
-                            class="h-7 px-2 rounded-lg bg-white border border-slate-200 text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer">
-                            <option value="2026">2026</option>
-                            <option value="2027">2027</option>
-                            <option value="2028">2028</option>
-                            <option value="2029">2029</option>
-                            <option value="2030">2030</option>
-                        </select>
-                        <button type="button" id="nextMonthBtn" data-action="next-month"
-                            class="w-7 h-7 rounded-lg bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 flex items-center justify-center text-xs font-black text-slate-700 transition cursor-pointer disabled:opacity-40">
-                            ▶
-                        </button>
-                        <button type="button" data-action="jump-today"
-                            class="h-7 px-2.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-extrabold transition cursor-pointer">
-                            Today
-                        </button>
-                    </div>
+                if (prevWeekData) {
+                    prevWeekData.days.forEach((pObj, pIdx) => {
+                        const isLastPrev = pIdx === prevWeekData.days.length - 1;
+                        const rightB = isLastPrev ? `border-right: ${BOLD_BORDER};` : "";
+                        html += `
+                            <th style="width: ${prevDayColW}px; min-width: ${prevDayColW}px; background-color: #cbd5e1; border-bottom: ${BOLD_BORDER}; ${rightB}"
+                                class="py-1 text-[10px] sm:text-[11px] font-black text-slate-700 no-print"
+                                title="Previous Month (${escapeHtml(prevWeekData.prevLabel)}) — Day ${pObj.day}">
+                                ${pObj.day}
+                            </th>
+                        `;
+                    });
+                }
 
-                    <div class="inline-flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-slate-300">
-                        <input type="text" id="empSearchInput" placeholder="Search name..." aria-label="Search Staff Name"
-                            class="w-20 sm:w-28 px-1 py-0.5 text-xs font-semibold text-slate-800 focus:outline-none">
-                        <span class="text-slate-300">|</span>
-                        <select id="empFilterSelect" aria-label="Filter Staff"
-                            class="py-0.5 pr-1 bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer max-w-[100px] sm:max-w-none">
-                            <option value="all">All Staff</option>
-                        </select>
-                    </div>
+                daysList.forEach(dObj => {
+                    html += `<th style="width: ${dayColW}px; min-width: ${dayColW}px; background-color: #74b3ce; border-bottom: ${BOLD_BORDER};" class="py-1 text-[11px] sm:text-xs font-black text-slate-950">${dObj.day}</th>`;
+                });
+                html += `<th rowspan="2" colspan="3" style="width: ${divW + legendCodeW + legendLabelW}px; background-color: #74b3ce; border-left: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"></th></tr>`;
 
-                    <div class="inline-flex items-center gap-1.5">
-                        <button type="button" data-action="print-roster"
-                            class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
-                            🖨 <span class="hidden sm:inline">Print / PDF</span>
-                        </button>
-                        <button type="button" data-action="open-change-password"
-                            class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
-                            🔑 <span class="hidden sm:inline">Password</span>
-                        </button>
-                        <button type="button" data-action="sign-out"
-                            class="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition cursor-pointer">
-                            Sign Out
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </header>
+                html += `<tr style="border-bottom: ${BOLD_BORDER};">`;
+                html += `
+                    <th ${headerEditAttr} style="${empStickyStyle} background-color: #ffffff; color: #1d4ed8; border-right: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"
+                        class="sticky-emp-col py-1 px-1.5 sm:px-2.5 text-center text-[10.5px] sm:text-xs font-black ${headerCursor}">
+                        ${escapeHtml(formatMonthBadge(state.currentMonthKey))} / ${escapeHtml(monthRec.version)}
+                    </th>
+                `;
 
-        <!-- Main Workspace -->
-        <main class="w-full px-2 sm:px-6 py-3.5 space-y-3.5 flex-1 flex flex-col items-center">
+                if (prevWeekData) {
+                    prevWeekData.days.forEach((pObj, pIdx) => {
+                        const isLastPrev = pIdx === prevWeekData.days.length - 1;
+                        const rightB = isLastPrev ? `border-right: ${BOLD_BORDER};` : "";
+                        const bg = pObj.isWeekend ? "#e2e8f0" : "#f1f5f9";
+                        html += `
+                            <th style="width: ${prevDayColW}px; min-width: ${prevDayColW}px; background-color: ${bg}; border-bottom: ${BOLD_BORDER}; ${rightB}"
+                                class="py-1 text-[9.5px] sm:text-[10px] font-extrabold text-slate-600 no-print">
+                                ${pObj.abbr}
+                            </th>
+                        `;
+                    });
+                }
 
-            <!-- Clean 4-Card Supervisor Control Panel -->
-            <section id="adminHeaderControls" class="hidden w-full max-w-[1660px] no-print">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
-                    <!-- Group 1: Workflow -->
-                    <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-2">
-                        <div class="text-[11px] font-extrabold text-slate-700 tracking-wide">Workflow</div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <button type="button" data-action="publish-draft" id="publishDraftBtn"
-                                class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-700 hover:bg-emerald-800 text-white shadow-2xs transition cursor-pointer">
-                                📢 Publish &amp; Approve
-                            </button>
-                            <button type="button" data-action="toggle-draft-published" id="toggleDraftPubBtn"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition cursor-pointer">
-                                👁 View Published
-                            </button>
-                            <div class="inline-flex items-center rounded-xl border border-slate-300 bg-white overflow-hidden">
-                                <button type="button" data-action="undo-action" id="undoBtn" disabled
-                                    class="px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 border-r border-slate-200 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                                    ↶ Undo
-                                </button>
-                                <button type="button" data-action="redo-action" id="redoBtn" disabled
-                                    class="px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                                    ↷ Redo
-                                </button>
+                daysList.forEach(dObj => {
+                    const bg = dObj.isWeekend ? "#dce6f2" : "#ffffff";
+                    html += `<th style="width: ${dayColW}px; min-width: ${dayColW}px; background-color: ${bg}; border-bottom: ${BOLD_BORDER};" class="py-1 text-[10px] sm:text-[11px] font-extrabold text-slate-900">${dObj.abbr}</th>`;
+                });
+                html += `</tr></thead>`;
+
+                function renderRightSideCells(rowIdx) {
+                    let cells = "";
+                    if (rowIdx === 0 && legendCount > 0) {
+                        cells += `<td rowspan="${legendCount}" style="width: ${divW}px; min-width: ${divW}px; max-width: ${divW}px; background-color: #808080; border-left: ${BOLD_BORDER}; border-right: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"></td>`;
+                    }
+                    if (rowIdx === legendCount && bottomBlueCount > 0) {
+                        cells += `<td rowspan="${bottomBlueCount}" colspan="3" style="background-color: #74b3ce; border-left: ${BOLD_BORDER}; border-top: ${BOLD_BORDER};"></td>`;
+                        return cells;
+                    }
+                    if (rowIdx > legendCount) return "";
+                    const item = legendRows[rowIdx];
+                    if (!item) return cells;
+
+                    if (item.type === "add-btn") {
+                        cells += `
+                            <td colspan="2" style="height: ${rowH}px; background-color: #f8fafc; border-left: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};" class="px-1.5 py-0.5 text-center no-print">
+                                <button type="button" data-action="open-add-code-modal" class="w-full py-1 px-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] sm:text-[11px] font-extrabold transition cursor-pointer">+ Add Code</button>
+                            </td>
+                        `;
+                        return cells;
+                    }
+
+                    const c = item.codeObj;
+                    const isLastLegendRow = (rowIdx === legendCount - 1);
+                    const bottomBorder = isLastLegendRow ? `border-bottom: ${BOLD_BORDER};` : "";
+                    const txtColor = resolveCodeTextColor(c);
+                    const patCls = getPatternClass(c.pattern);
+                    const crispCls = (patCls === "pattern-stripes" && txtColor.toLowerCase() === "#000000") ? "crisp-striped-text" : "";
+                    const editAttr = editable ? `data-action="open-edit-code" data-code="${escapeHtml(c.code)}"` : "";
+                    const hoverCls = editable ? "cursor-pointer hover:brightness-95" : "";
+
+                    cells += `
+                        <td ${editAttr} style="width: ${legendCodeW}px; min-width: ${legendCodeW}px; max-width: ${legendCodeW}px; height: ${rowH}px; background-color: ${escapeHtml(c.color)}; color: ${escapeHtml(txtColor)}; border-left: ${BOLD_BORDER}; ${bottomBorder}"
+                            class="px-0.5 text-center shift-letter ${patCls} ${crispCls} ${hoverCls}">${escapeHtml(c.code)}</td>
+                        <td ${editAttr} style="min-width: ${legendLabelW}px; height: ${rowH}px; background-color: #ffffff; white-space: nowrap; ${bottomBorder}"
+                            class="px-1.5 sm:px-2.5 text-center text-[10.5px] sm:text-xs font-extrabold text-slate-950 whitespace-nowrap ${hoverCls}">
+                            <div class="flex items-center justify-between gap-1 w-full">
+                                <span class="legend-label-text text-center">${escapeHtml(c.label || c.desc || c.time || c.code)}</span>
+                                ${editable ? `<span class="text-[10px] text-sky-600 font-bold shrink-0 no-print">✎</span>` : ""}
                             </div>
-                        </div>
-                    </div>
+                        </td>
+                    `;
+                    return cells;
+                }
 
-                    <!-- Group 2: Data Insights -->
-                    <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-2">
-                        <div class="text-[11px] font-extrabold text-slate-700 tracking-wide">Data Insights</div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <button type="button" data-action="open-sync-leaves"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 transition cursor-pointer">
-                                ⇄ Sync Leaves
-                            </button>
-                            <button type="button" data-action="open-rules-modal"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition cursor-pointer">
-                                ⚠️ Rules &amp; Alerts
-                            </button>
-                            <button type="button" data-action="open-receipts-modal"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition cursor-pointer">
-                                👁 Read Receipts
-                            </button>
-                            <button type="button" data-action="open-audit-modal"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
-                                📋 Audit Log
-                            </button>
-                        </div>
-                    </div>
+                html += `<tbody id="rosterTbody">`;
+                let globalRowIndex = 0;
 
-                    <!-- Group 3: Staff & Roster Management -->
-                    <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-2">
-                        <div class="text-[11px] font-extrabold text-slate-700 tracking-wide">Staff &amp; Roster Management</div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <button type="button" data-action="add-employee"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition cursor-pointer">
-                                + Add Employee
-                            </button>
-                            <button type="button" data-action="toggle-arrange-staff" id="arrangeStaffBtn"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition cursor-pointer">
-                                ↕️ Arrange Staff
-                            </button>
-                            <button type="button" data-action="open-add-code-modal"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 transition cursor-pointer">
-                                + Add Code
-                            </button>
-                        </div>
-                    </div>
+                visibleEmployees.forEach(emp => {
+                    const empAssign = monthRec.assignments[String(emp.id)] || {};
+                    const empPrevAssign = prevWeekData ? (prevWeekData.assignments[String(emp.id)] || {}) : {};
+                    const empEditAttr = editable ? `data-action="open-edit-emp" data-emp="${emp.id}"` : "";
+                    const empHover = editable ? "cursor-pointer hover:bg-sky-50" : "";
+                    const dragAttrs = (editable && state.arrangeStaffMode) ? `draggable="true"` : "";
+                    const dragHandle = (editable && state.arrangeStaffMode) ? `<span class="text-sky-600 font-black cursor-grab mr-1 shrink-0 no-print">☰</span>` : "";
 
-                    <!-- Group 4: Month Tools -->
-                    <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-2">
-                        <div class="text-[11px] font-extrabold text-slate-700 tracking-wide">Month Tools</div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <button type="button" data-action="toggle-prev-week" id="togglePrevWeekBtn"
-                                class="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition cursor-pointer"
-                                title="Show/Hide Last 7 Days of Previous Month">
-                                👁 Hide Prev 7d
-                            </button>
-                            <button type="button" data-action="copy-prev-month"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
-                                Copy Prev Month
-                            </button>
-                            <button type="button" data-action="toggle-month-lock" id="lockMonthBtn"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
-                                Lock Month
-                            </button>
-                            <button type="button" data-action="export-csv"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
-                                Export CSV
-                            </button>
-                            <button type="button" data-action="open-clear-month-modal"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-rose-50 text-rose-700 border border-slate-300 hover:border-rose-200 transition cursor-pointer">
-                                Clear Month
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                    html += `<tr class="emp-roster-row" data-emp-row-id="${emp.id}" ${dragAttrs}>`;
+                    html += `
+                        <td ${empEditAttr} style="${empStickyStyle} height: ${rowH}px; background-color: #ffffff; border-right: ${BOLD_BORDER};"
+                            class="sticky-emp-col px-1.5 sm:px-2.5 text-left text-[11px] sm:text-xs font-extrabold text-slate-900 ${empHover}" title="${escapeHtml(emp.name)}">
+                            <div class="flex items-center justify-between gap-1 w-full">
+                                ${dragHandle}
+                                <span class="emp-name-text">${escapeHtml(emp.name)}</span>
+                                ${editable ? `<span class="text-[10px] text-slate-400 font-bold shrink-0 no-print">✎</span>` : ""}
+                            </div>
+                        </td>
+                    `;
 
-            <!-- Admin Paint Brush & Layout Size Panel -->
-            <section id="adminPaintToolbar" class="hidden w-full max-w-[1660px] bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-300 shadow-xs space-y-2.5 no-print">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-xs font-extrabold text-slate-800 shrink-0">Brush:</span>
-                        <div id="adminBrushPalette" class="flex items-center gap-1.5 flex-wrap"></div>
-                    </div>
-                    <div class="text-[11px] font-medium text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-                        <strong>Tip:</strong> Tap/drag cells to paint. Right-click to clear. <strong>Alt+Click</strong> to override alert.
-                    </div>
-                </div>
+                    if (prevWeekData) {
+                        prevWeekData.days.forEach((pObj, pIdx) => {
+                            const isLastPrev = pIdx === prevWeekData.days.length - 1;
+                            const rightB = isLastPrev ? `border-right: ${BOLD_BORDER};` : "";
+                            const pCode = empPrevAssign[String(pObj.day)] || "";
+                            if (!pCode) {
+                                html += `<td style="width: ${prevDayColW}px; min-width: ${prevDayColW}px; height: ${rowH}px; background-color: #f8fafc; ${rightB}" class="prev-week-cell no-print" title="${escapeHtml(prevWeekData.prevLabel)} Day ${pObj.day}: OFF"></td>`;
+                            } else {
+                                const def = getCodeDef(pCode);
+                                const txtColor = resolveCodeTextColor(def);
+                                const patCls = getPatternClass(def.pattern);
+                                html += `<td style="width: ${prevDayColW}px; min-width: ${prevDayColW}px; height: ${rowH}px; background-color: ${escapeHtml(def.color)}; color: ${escapeHtml(txtColor)}; ${rightB}" class="prev-week-cell shift-letter ${patCls} no-print" title="${escapeHtml(prevWeekData.prevLabel)} Day ${pObj.day}: ${escapeHtml(pCode)}">${escapeHtml(pCode)}</td>`;
+                            }
+                        });
+                    }
 
-                <div class="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5">
-                    <div class="inline-flex items-center gap-2 bg-emerald-50/70 px-2.5 py-1 rounded-xl border border-emerald-200">
-                        <label for="adminDeptTitleInput" class="text-[11px] font-extrabold text-emerald-950 whitespace-nowrap">Title:</label>
-                        <input type="text" id="adminDeptTitleInput" maxlength="32" value="OCC / THC HQ"
-                            class="w-32 sm:w-44 px-2 py-1 rounded-lg border border-emerald-300 bg-white text-xs font-black text-slate-900 focus:outline-none">
-                        <button type="button" data-action="save-dept-title-inline"
-                            class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-extrabold transition cursor-pointer">
-                            Apply
-                        </button>
-                    </div>
+                    daysList.forEach(dObj => {
+                        const codeStr = empAssign[String(dObj.day)] || "";
+                        const ck = emp.id + "_" + dObj.day;
+                        const isSynced = Boolean(monthRec.syncedLeaves[ck] && codeStr === "V");
+                        const fl = flags[ck];
+                        const hasActiveAlert = Boolean(fl && (fl.fatigue || fl.conflict) && !fl.overridden);
+                        const cursorCls = (editable && !monthRec.locked && !state.arrangeStaffMode) ? "cursor-pointer hover:brightness-95" : "cursor-default";
 
-                    <div class="hidden lg:flex items-center gap-2.5 flex-wrap">
-                        <span class="text-xs font-extrabold text-slate-800">Layout Sizes:</span>
-                        <label class="inline-flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 text-[11px] font-bold text-slate-700">
-                            <span>Name Col:</span>
-                            <input type="range" id="dimEmpWidthRange" min="140" max="360" step="5" value="210" class="w-16 accent-sky-600">
-                            <input type="number" id="dimEmpWidthNum" min="140" max="360" value="210" class="w-12 px-1 py-0.5 rounded border border-slate-300 text-center font-extrabold bg-white">
-                        </label>
-                        <label class="inline-flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 text-[11px] font-bold text-slate-700">
-                            <span>Day Col:</span>
-                            <input type="range" id="dimDayWidthRange" min="26" max="56" step="1" value="34" class="w-16 accent-sky-600">
-                            <input type="number" id="dimDayWidthNum" min="26" max="56" value="34" class="w-11 px-1 py-0.5 rounded border border-slate-300 text-center font-extrabold bg-white">
-                        </label>
-                        <label class="inline-flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 text-[11px] font-bold text-slate-700">
-                            <span>Divider:</span>
-                            <input type="range" id="dimDividerWidthRange" min="12" max="48" step="2" value="24" class="w-16 accent-sky-600">
-                            <input type="number" id="dimDividerWidthNum" min="12" max="48" value="24" class="w-11 px-1 py-0.5 rounded border border-slate-300 text-center font-extrabold bg-white">
-                        </label>
-                        <label class="inline-flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 text-[11px] font-bold text-slate-700">
-                            <span>Row Height:</span>
-                            <input type="range" id="dimRowHeightRange" min="24" max="52" step="1" value="32" class="w-16 accent-sky-600">
-                            <input type="number" id="dimRowHeightNum" min="24" max="52" value="32" class="w-11 px-1 py-0.5 rounded border border-slate-300 text-center font-extrabold bg-white">
-                        </label>
-                        <button type="button" data-action="reset-dimensions"
-                            class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300">
-                            Reset
-                        </button>
-                    </div>
-                </div>
-            </section>
+                        let badgeHtml = "";
+                        if (isSynced) badgeHtml += `<span class="absolute bottom-0.5 right-0.5 text-[7px] sm:text-[8px] font-black text-blue-700 leading-none pointer-events-none">⇄</span>`;
+                        if (fl && (fl.fatigue || fl.conflict)) {
+                            badgeHtml += fl.overridden
+                                ? `<span class="absolute top-0.5 left-0.5 text-[7px] sm:text-[8px] font-black text-emerald-700 leading-none pointer-events-none">✔</span>`
+                                : `<span class="absolute top-0.5 left-0.5 text-[8px] sm:text-[9px] font-black text-rose-600 leading-none pointer-events-none">▲</span>`;
+                        }
+                        const extraCellClasses = [isSynced ? "synced-leave-cell" : "", hasActiveAlert ? "alert-ring-cell" : ""].join(" ");
 
-            <!-- Unified Roster Container -->
-            <section id="rosterOuterCard" style="width: fit-content; max-width: 100%;" class="bg-white rounded-2xl border border-slate-300 shadow-sm p-2 sm:p-4 overflow-hidden">
-                <div id="rosterScrollContainer" class="w-full overflow-x-auto custom-scrollbar pb-1.5">
-                    <div id="unifiedRosterWrapper" class="inline-block min-w-max"></div>
-                </div>
-            </section>
-        </main>
-    </div>
+                        if (!codeStr) {
+                            html += `<td data-cell="1" data-emp="${emp.id}" data-day="${dObj.day}" style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: #ffffff;" class="relative p-0 transition ${cursorCls} ${extraCellClasses}">${badgeHtml}</td>`;
+                        } else {
+                            const def = getCodeDef(codeStr);
+                            const txtColor = resolveCodeTextColor(def);
+                            const patCls = getPatternClass(def.pattern);
+                            const crispCls = (patCls === "pattern-stripes" && txtColor.toLowerCase() === "#000000") ? "crisp-striped-text" : "";
+                            html += `<td data-cell="1" data-emp="${emp.id}" data-day="${dObj.day}" style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: ${escapeHtml(def.color)}; color: ${escapeHtml(txtColor)};" class="relative p-0 shift-letter ${patCls} ${crispCls} transition ${cursorCls} ${extraCellClasses}">${escapeHtml(def.code)}${badgeHtml}</td>`;
+                        }
+                    });
 
-    <!-- Modals -->
-    <div id="changePasswordModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-extrabold text-slate-900">🔑 Change Account Password</h3>
-                <button type="button" data-action="close-modal" data-modal="changePasswordModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
-            </div>
-            <form id="changePasswordForm" class="space-y-3 text-xs">
-                <div><label class="block font-bold text-slate-700 mb-1">Current Password</label><input type="password" id="curPassInput" required placeholder="••••••••" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-bold"></div>
-                <div><label class="block font-bold text-slate-700 mb-1">New Password (min 6 chars)</label><input type="password" id="newPassInput" required minlength="6" placeholder="••••••••" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-bold"></div>
-                <div><label class="block font-bold text-slate-700 mb-1">Confirm New Password</label><input type="password" id="confPassInput" required minlength="6" placeholder="••••••••" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-bold"></div>
-                <p id="passChangeError" class="hidden text-xs font-bold text-rose-600 text-center"></p>
-                <div class="flex items-center justify-end gap-2 pt-1">
-                    <button type="button" data-action="close-modal" data-modal="changePasswordModal" class="px-4 py-2 rounded-xl font-bold bg-slate-100 text-slate-700">Cancel</button>
-                    <button type="submit" class="px-5 py-2 rounded-xl font-bold bg-sky-600 hover:bg-sky-700 text-white">Update Password</button>
-                </div>
-            </form>
-        </div>
-    </div>
+                    html += renderRightSideCells(globalRowIndex);
+                    html += `</tr>`;
+                    globalRowIndex++;
+                });
 
-    <div id="editHeaderModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-extrabold text-slate-900">Edit Department Header &amp; Version</h3>
-                <button type="button" data-action="close-modal" data-modal="editHeaderModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
-            </div>
-            <form id="editHeaderForm" class="space-y-3 text-xs">
-                <div><label class="block font-bold text-slate-700 mb-1">Department / Header Title</label><input type="text" id="rosterTitleInput" required maxlength="32" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-extrabold"></div>
-                <div>
-                    <label class="block font-bold text-slate-700 mb-1">Month Roster Version</label>
-                    <div class="flex items-center gap-2">
-                        <input type="text" id="rosterVersionInput" required maxlength="12" class="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-extrabold text-blue-700">
-                        <button type="button" data-action="increment-version-input" class="px-3 py-2 rounded-xl bg-sky-50 text-sky-800 border border-sky-200 font-extrabold">+1 Ver</button>
-                    </div>
-                </div>
-                <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" data-action="close-modal" data-modal="editHeaderModal" class="px-4 py-2 rounded-xl font-bold bg-slate-100 text-slate-700">Cancel</button>
-                    <button type="submit" class="px-5 py-2 rounded-xl font-bold bg-sky-600 text-white">Save Header</button>
-                </div>
-            </form>
-        </div>
-    </div>
+                html += `<tr style="border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};">`;
+                html += `<td style="${empStickyStyle} height: ${rowH}px; background-color: #a3c9b8; border-right: ${BOLD_BORDER}; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};" class="sticky-emp-col px-1.5 sm:px-2.5 text-center text-[11px] sm:text-xs font-black text-slate-950">Total Active</td>`;
+                if (prevWeekData) {
+                    html += `<td colspan="${prevColsCount}" style="height: ${rowH}px; background-color: #e2e8f0; border-right: ${BOLD_BORDER}; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};" class="text-[10px] font-extrabold text-slate-600 no-print">${escapeHtml(prevWeekData.prevLabel)} (Last 7d)</td>`;
+                }
+                daysList.forEach(dObj => {
+                    const count = totalPerDay[dObj.day] || 0;
+                    html += `<td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: #fecdd3; color: #991b1b; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER}; vertical-align: middle;" class="text-[11px] sm:text-xs font-black">${count}</td>`;
+                });
+                html += renderRightSideCells(globalRowIndex);
+                html += `</tr>`;
+                globalRowIndex++;
 
-    <div id="editEmpModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-extrabold text-slate-900">Manage Employee</h3>
-                <button type="button" data-action="close-modal" data-modal="editEmpModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
-            </div>
-            <form id="editEmpForm" class="space-y-3 text-xs">
-                <input type="hidden" id="editEmpId">
-                <div><label class="block font-bold text-slate-700 mb-1">Employee Display Name</label><input type="text" id="editEmpNameInput" required maxlength="36" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-bold"></div>
-                <div><label class="block font-bold text-slate-700 mb-1">Login Username</label><input type="text" id="editEmpUsernameInput" maxlength="32" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-bold"></div>
-                <div class="flex items-center gap-2 pt-1">
-                    <button type="button" data-action="move-emp-up" class="flex-1 py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-700">↑ Move Up</button>
-                    <button type="button" data-action="move-emp-down" class="flex-1 py-2 px-3 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-700">↓ Move Down</button>
-                </div>
-                <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                    <button type="button" data-action="delete-emp-modal" id="deleteEmpModalBtn" class="px-3 py-2 rounded-xl font-bold bg-rose-50 text-rose-700 border border-rose-200">Remove</button>
-                    <div class="flex items-center gap-2">
-                        <button type="button" data-action="close-modal" data-modal="editEmpModal" class="px-3.5 py-2 rounded-xl font-bold bg-slate-100 text-slate-700">Cancel</button>
-                        <button type="submit" class="px-4 py-2 rounded-xl font-bold bg-sky-600 text-white">Save</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+                activeCounterCodes.forEach(rawCounterItem => {
+                    const rawStr = typeof rawCounterItem === "object"
+                        ? (rawCounterItem.code || rawCounterItem.label || rawCounterItem.name || "")
+                        : String(rawCounterItem || "");
+                    const codeStr = rawStr.trim().split(/[\s(]/)[0].trim().toUpperCase();
+                    if (!codeStr) return;
+                    const codesToSum = codeStr.split("+").map(s => s.trim()).filter(Boolean);
+                    const primaryCode = codesToSum[0] || codeStr;
+                    const def = getCodeDef(primaryCode);
+                    const isCore = CORE_COUNTER_CODES.includes(codeStr);
+                    const txtColor = resolveCodeTextColor(def);
+                    const patCls = getPatternClass(def.pattern);
+                    const crispCls = (patCls === "pattern-stripes" && txtColor.toLowerCase() === "#000000") ? "crisp-striped-text" : "";
 
-    <div id="codeEditorModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 id="codeEditorModalTitle" class="text-base font-extrabold text-slate-900">Edit Shift / Status Code</h3>
-                <button type="button" data-action="close-modal" data-modal="codeEditorModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
-            </div>
-            <form id="codeEditorForm" class="space-y-3.5 text-xs">
-                <input type="hidden" id="codeEditorOriginalCode">
-                <div class="grid grid-cols-3 gap-2.5">
-                    <div><label class="block font-bold text-slate-700 mb-1">Code</label><input type="text" id="codeEditorCodeInput" required maxlength="3" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-center text-sm font-black uppercase"></div>
-                    <div class="col-span-2"><label class="block font-bold text-slate-700 mb-1">Timing / Label</label><input type="text" id="codeEditorLabelInput" required maxlength="28" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-bold"></div>
-                </div>
-                <div class="space-y-1.5">
-                    <label class="block font-bold text-slate-700">Background Color</label>
-                    <div class="flex items-center gap-2">
-                        <input type="color" id="codeEditorColorPicker" value="#fff59d" class="w-12 h-9 rounded-xl border border-slate-300 cursor-pointer">
-                        <input type="text" id="codeEditorHexInput" value="#FFF59D" maxlength="7" class="w-24 px-2.5 py-2 rounded-xl border border-slate-300 font-mono text-xs font-extrabold uppercase text-center">
-                        <div id="quickColorSwatches" class="flex items-center gap-1 flex-wrap flex-1"></div>
-                    </div>
-                </div>
-                <div class="space-y-1.5">
-                    <label class="block font-bold text-slate-700">Text Color</label>
-                    <div class="flex items-center gap-2">
-                        <input type="color" id="codeEditorTextColorPicker" value="#000000" class="w-12 h-9 rounded-xl border border-slate-300 cursor-pointer">
-                        <input type="text" id="codeEditorTextHexInput" value="#000000" maxlength="7" class="w-24 px-2.5 py-2 rounded-xl border border-slate-300 font-mono text-xs font-extrabold uppercase text-center">
-                        <button type="button" data-action="set-quick-text-color" data-hex="#000000" class="px-2.5 py-2 rounded-xl border border-slate-300 bg-slate-950 text-white text-[11px] font-extrabold">Black</button>
-                        <button type="button" data-action="set-quick-text-color" data-hex="#FFFFFF" class="px-2.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 text-[11px] font-extrabold">White</button>
-                        <div id="codeEditorLivePreview" class="flex-1 h-9 rounded-xl border border-slate-800 flex items-center justify-center shift-letter">A</div>
-                    </div>
-                </div>
-                <div>
-                    <label class="block font-bold text-slate-700 mb-1">Cell Fill Pattern</label>
-                    <div class="grid grid-cols-3 gap-2">
-                        <label class="cursor-pointer"><input type="radio" name="codePatternRadio" value="solid" checked class="peer hidden"><div class="py-2 px-2 rounded-xl border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 text-center font-bold">Solid</div></label>
-                        <label class="cursor-pointer"><input type="radio" name="codePatternRadio" value="stripes" class="peer hidden"><div class="py-2 px-2 rounded-xl border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 text-center font-bold">Stripes</div></label>
-                        <label class="cursor-pointer"><input type="radio" name="codePatternRadio" value="grid" class="peer hidden"><div class="py-2 px-2 rounded-xl border border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 text-center font-bold">Grid</div></label>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                    <button type="button" data-action="delete-code-modal" id="deleteCodeModalBtn" class="px-3 py-2 rounded-xl font-bold bg-rose-50 text-rose-700 border border-rose-200">Delete</button>
-                    <div class="flex items-center gap-2 ml-auto">
-                        <button type="button" data-action="close-modal" data-modal="codeEditorModal" class="px-4 py-2 rounded-xl font-bold bg-slate-100 text-slate-700">Cancel</button>
-                        <button type="submit" class="px-5 py-2 rounded-xl font-bold bg-indigo-600 text-white">Save Code</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+                    html += `<tr>`;
+                    html += `
+                        <td style="${empStickyStyle} height: ${rowH}px; background-color: ${escapeHtml(def.color)}; color: ${escapeHtml(txtColor)}; border-right: ${BOLD_BORDER}; vertical-align: middle; text-align: center;" class="sticky-emp-col px-1.5 sm:px-2.5 text-center ${patCls} ${crispCls}">
+                            <div class="flex items-center justify-between gap-1 w-full h-full">
+                                <span class="w-4 shrink-0"></span>
+                                <span class="flex-1 text-center shift-letter leading-none" style="font-size: 13px; font-weight: 800;">${escapeHtml(codeStr)}</span>
+                                ${(!isCore && editable) ? `<button type="button" data-action="remove-counter-row" data-code="${escapeHtml(codeStr)}" class="w-4 h-4 rounded bg-black/20 hover:bg-rose-600 text-white text-[10px] font-black flex items-center justify-center leading-none cursor-pointer no-print shrink-0">×</button>` : `<span class="w-4 shrink-0"></span>`}
+                            </div>
+                        </td>
+                    `;
+                    if (prevWeekData) {
+                        html += `<td colspan="${prevColsCount}" style="height: ${rowH}px; background-color: #f8fafc; border-right: ${BOLD_BORDER};" class="text-[10px] font-bold text-slate-400 no-print">—</td>`;
+                    }
+                    daysList.forEach(dObj => {
+                        let val = 0;
+                        codesToSum.forEach(cKey => {
+                            const cMap = codePerDay[cKey];
+                            if (cMap && typeof cMap[dObj.day] === "number") val += cMap[dObj.day];
+                        });
+                        const isZeroCoreAlert = isCore && val === 0;
+                        const cellBg = isZeroCoreAlert ? "#dc2626" : "#ffffff";
+                        const cellText = isZeroCoreAlert ? "#ffffff" : "#000000";
+                        const cellFont = isZeroCoreAlert ? "text-xs sm:text-sm font-black" : "text-[11px] sm:text-xs font-extrabold";
+                        html += `<td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: ${cellBg}; color: ${cellText}; vertical-align: middle;" class="${cellFont}">${val}</td>`;
+                    });
+                    html += renderRightSideCells(globalRowIndex);
+                    html += `</tr>`;
+                    globalRowIndex++;
+                });
 
-    <div id="addCounterRowModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-extrabold text-slate-900">Add Counter Row</h3>
-                <button type="button" data-action="close-modal" data-modal="addCounterRowModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
-            </div>
-            <form id="addCounterRowForm" class="space-y-3 text-xs">
-                <select id="extraCounterCodeSelect" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-800 bg-white"></select>
-                <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" data-action="close-modal" data-modal="addCounterRowModal" class="px-4 py-2 rounded-xl font-bold bg-slate-100 text-slate-700">Cancel</button>
-                    <button type="submit" class="px-5 py-2 rounded-xl font-bold bg-sky-600 text-white">Add Row</button>
-                </div>
-            </form>
-        </div>
-    </div>
+                if (editable) {
+                    html += `<tr class="no-print">`;
+                    html += `<td style="${empStickyStyle} height: ${rowH}px; border-right: ${BOLD_BORDER};" class="sticky-emp-col px-1.5 sm:px-2.5 bg-slate-50 text-center"><button type="button" data-action="open-add-counter-modal" class="w-full py-1 px-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[10px] sm:text-[11px] font-extrabold transition cursor-pointer truncate">+ Add Counter</button></td>`;
+                    if (prevWeekData) {
+                        html += `<td colspan="${prevColsCount}" style="height: ${rowH}px; border-right: ${BOLD_BORDER};" class="bg-slate-100 no-print"></td>`;
+                    }
+                    html += `<td colspan="${daysList.length}" style="height: ${rowH}px;" class="bg-slate-50 px-3 text-left text-[11px] font-medium text-slate-600">Shifts <strong>A</strong>, <strong>B</strong>, and <strong>C</strong> are fixed.</td>`;
+                    html += renderRightSideCells(globalRowIndex);
+                    html += `</tr>`;
+                }
 
-    <div id="clearMonthModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-extrabold text-rose-700">Clear Current Month Roster</h3>
-                <button type="button" data-action="close-modal" data-modal="clearMonthModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
-            </div>
-            <p id="clearMonthDesc" class="text-xs text-slate-600 leading-relaxed"></p>
-            <div class="flex items-center justify-end gap-2 pt-1">
-                <button type="button" data-action="close-modal" data-modal="clearMonthModal" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Cancel</button>
-                <button type="button" data-action="confirm-clear-month" class="px-5 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white">Clear Month</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="syncLeavesModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-extrabold text-slate-900">⇄ Sync Annual Leaves &amp; Training (2027)</h3>
-                <button type="button" data-action="close-modal" data-modal="syncLeavesModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
-            </div>
-            <div class="flex flex-col gap-2">
-                <button type="button" data-action="run-leave-sync" data-source="leave_planner_2027" class="w-full py-2.5 px-4 rounded-xl bg-blue-600 text-white text-xs font-extrabold">Sync from OCC Planner (leave_planner_2027)</button>
-                <button type="button" data-action="run-leave-sync" data-source="emsleave_planner_2027" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 text-white text-xs font-extrabold">Sync from EMS Planner (emsleave_planner_2027)</button>
-            </div>
-            <p id="syncLeavesResultText" class="text-xs font-extrabold text-center"></p>
-        </div>
-    </div>
-
-    <div id="rulesAlertsModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-extrabold text-slate-900">⚠️ Fatigue &amp; Conflict Rules</h3>
-                <button type="button" data-action="close-modal" data-modal="rulesAlertsModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
-            </div>
-            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs">
-                <strong class="block text-slate-800">Non-Coincidence Rule:</strong>
-                <div class="flex items-center gap-2 flex-wrap">
-                    <select id="ruleEmp1Select" class="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold bg-white"></select>
-                    <span class="font-black text-slate-700">≠</span>
-                    <select id="ruleEmp2Select" class="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold bg-white"></select>
-                    <button type="button" data-action="add-sep-rule" class="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-extrabold">+ Add</button>
-                </div>
-                <div id="sepRulesListContainer" class="space-y-1.5 pt-1"></div>
-            </div>
-            <div class="space-y-2 text-xs">
-                <strong class="block text-slate-800">Active Alerts This Month:</strong>
-                <div id="activeAlertsListContainer" class="space-y-1.5"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="readReceiptsModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-extrabold text-slate-900">👁 Staff Read Receipts (Last 40 Days)</h3>
-                <button type="button" data-action="close-modal" data-modal="readReceiptsModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
-            </div>
-            <div id="receiptCurrentSummary" class="space-y-1.5 text-xs"></div>
-            <div class="pt-2 border-t border-slate-200 space-y-1.5 text-xs">
-                <strong class="block text-slate-800">Historical View Log:</strong>
-                <div id="receiptHistoryList" class="space-y-1"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="auditLogModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 shadow-xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-extrabold text-slate-900">📋 Supervisor Audit Log</h3>
-                <button type="button" data-action="close-modal" data-modal="auditLogModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
-            </div>
-            <div id="auditLogListContainer" class="space-y-1.5 text-xs"></div>
-        </div>
-    </div>
-    function bindStaffRowDragEvents() {
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+                if (editable && state.arrangeStaffMode) bindStaffRowDragEvents();
+            }
+            function bindStaffRowDragEvents() {
                 const tbody = document.getElementById("rosterTbody");
                 if (!tbody) return;
                 let draggedRow = null;
