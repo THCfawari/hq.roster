@@ -14,16 +14,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-    .roster-grid th, .roster-grid td, #unifiedRosterWrapper table th, #unifiedRosterWrapper table td {
-            font-weight: 800 !important;
-            color: #000000 !important;
-            border-color: #000000 !important;
-            border-width: 1.5px !important;
-        }
-     #unifiedRosterWrapper table th,
-#unifiedRosterWrapper table td {
-    border-width: 1.5px !important;
-}
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f1f5f9;
@@ -45,7 +35,22 @@
         }
 
         .roster-grid { border-collapse: collapse; }
-        .roster-grid th, .roster-grid td { border: 1px solid #000000; }
+        .roster-grid th, .roster-grid td { border: 1.5px solid #000000; }
+        .roster-grid th, .roster-grid td, #unifiedRosterWrapper table th, #unifiedRosterWrapper table td {
+            font-weight: 800 !important;
+            color: #000000 !important;
+            border-color: #000000 !important;
+            border-width: 1.5px !important;
+        }
+        /* Keep white text legible on dark shift cells (such as Training 'T' or zero-coverage alerts) */
+        #unifiedRosterWrapper table td[style*="color: #ffffff"],
+        #unifiedRosterWrapper table td[style*="color: rgb(255, 255, 255)"],
+        #unifiedRosterWrapper table td[style*="background-color: #1e3a8a"],
+        #unifiedRosterWrapper table td[style*="background-color: #dc2626"],
+        #unifiedRosterWrapper table td[style*="background-color: #2563eb"],
+        #unifiedRosterWrapper table td[style*="background-color: #475569"] {
+            color: #ffffff !important;
+        }
 
         .shift-letter {
             font-size: 15px;
@@ -557,7 +562,7 @@
     <div id="syncLeavesModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
         <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl border border-slate-200 space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-extrabold text-slate-900">⇄ Sync Annual Leaves (2027 Planner)</h3>
+                <h3 class="text-base font-extrabold text-slate-900">⇄ Sync Annual Leaves &amp; Training (2027)</h3>
                 <button type="button" data-action="close-modal" data-modal="syncLeavesModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
             </div>
             <div class="flex flex-col gap-2">
@@ -1612,14 +1617,17 @@
                                 ? String(entryVal.type || "L").toUpperCase()
                                 : String(entryVal || "L").toUpperCase();
                             const dayNum = parseInt(dateStr.split("-")[2], 10);
+                            const cellKey = rEmp.id + "_" + dayNum;
                             if (!monthRec.assignments[String(rEmp.id)]) monthRec.assignments[String(rEmp.id)] = {};
+                            const existingVal = monthRec.assignments[String(rEmp.id)][String(dayNum)];
+                            if (existingVal && !monthRec.syncedLeaves[cellKey] && !monthRec.overrides[cellKey]) return;
                             if (entryType === "T") {
                                 monthRec.assignments[String(rEmp.id)][String(dayNum)] = "T";
-                                delete monthRec.syncedLeaves[rEmp.id + "_" + dayNum];
+                                delete monthRec.syncedLeaves[cellKey];
                                 trainingCount++;
                             } else {
                                 monthRec.assignments[String(rEmp.id)][String(dayNum)] = "V";
-                                monthRec.syncedLeaves[rEmp.id + "_" + dayNum] = true;
+                                monthRec.syncedLeaves[cellKey] = true;
                                 leaveCount++;
                             }
                         });
@@ -1742,8 +1750,7 @@
                     const imgData = canvas.toDataURL("image/png", 1.0);
                     pdf.addImage(imgData, "PNG", offsetX, offsetY, imgW, imgH, undefined, "FAST");
 
-                    const monthRec = ensureMonthRecord(state.currentMonthKey);
-                    pdf.save(`HQ_Roster_${state.currentMonthKey}_${monthRec.version}.pdf`);
+                    pdf.save(`HQ_Roster_${state.currentMonthKey}.pdf`);
                     showToast("High-Res PDF downloaded successfully!", "success");
                 } catch (err) {
                     if (scrollContainer) scrollContainer.style.overflow = prevOverflow;
