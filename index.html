@@ -140,30 +140,39 @@
     text-indent: 0 !important;
     font-weight: 800 !important;
 }
-/* 1. منع قص الحروف في الهيدر والأسماء وأوقات الشفتات في الشاشة والـ PDF */
-#unifiedRosterWrapper th,
-#unifiedRosterWrapper td,
-#unifiedRosterWrapper span,
-#unifiedRosterWrapper div {
+/* 1. إصلاح قص الأسماء والهيدر وأوقات الشفتات في الـ PDF */
+.pdf-exporting th,
+.pdf-exporting td {
+    height: auto !important;
+    min-height: 28px !important;
+    padding-top: 4px !important;
+    padding-bottom: 6px !important;
     overflow: visible !important;
-    text-overflow: clip !important;
+}
+
+.pdf-exporting td > div,
+.pdf-exporting th > div {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
     line-height: 1.4 !important;
 }
 
-/* 2. رفع وتوسيط حروف الشفتات أفقياً وعمودياً داخل المربعات */
-#unifiedRosterWrapper .shift-letter,
-#unifiedRosterWrapper [data-cell] {
+/* 2. رفع وتوسيط حروف الشفتات والأرقام عمودياً وأفقياً في الـ PDF */
+.pdf-exporting [data-cell],
+.pdf-exporting .shift-letter,
+.pdf-exporting tr:nth-child(n+12) td:not(:first-child) {
     vertical-align: middle !important;
     text-align: center !important;
-    line-height: 1 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
+    line-height: 1.1 !important;
+    padding-top: 3px !important;
+    padding-bottom: 7px !important;
 }
 
 /* 3. إخفاء أزرار الإضافة (+ Add Code / + Add Counter) والملاحظة وأيقونات القلم أثناء الطباعة و الـ PDF */
 @media print {
     .no-print,
-    #unifiedRosterWrapper tr:last-child,
+    #unifiedRosterWrapper tbody tr:last-child,
     #unifiedRosterWrapper [data-action="open-add-code-modal"],
     #unifiedRosterWrapper [data-action="open-add-counter-modal"],
     #unifiedRosterWrapper svg,
@@ -173,7 +182,7 @@
 }
 
 .pdf-exporting .no-print,
-.pdf-exporting tr:last-child,
+.pdf-exporting tbody tr:last-child,
 .pdf-exporting [data-action="open-add-code-modal"],
 .pdf-exporting [data-action="open-add-counter-modal"],
 .pdf-exporting svg,
