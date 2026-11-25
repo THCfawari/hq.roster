@@ -168,7 +168,40 @@
     padding-top: 3px !important;
     padding-bottom: 7px !important;
 }
+/* 1. منع قص الحروف في الأسماء والهيدر وأوقات الشفتات داخل جميع العناصر الفرعية أثناء الـ PDF */
+.pdf-exporting * {
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
 
+.pdf-exporting th,
+.pdf-exporting td {
+    height: auto !important;
+    min-height: 28px !important;
+    padding-top: 3px !important;
+    padding-bottom: 5px !important;
+}
+
+.pdf-exporting th span,
+.pdf-exporting td span,
+.pdf-exporting th div,
+.pdf-exporting td div {
+    line-height: 1.45 !important;
+    height: auto !important;
+    max-height: none !important;
+}
+
+/* 2. رفع حروف الشفتات والأرقام إلى منتصف المربعات عمودياً في الـ PDF */
+.pdf-exporting [data-cell],
+.pdf-exporting [data-cell] span,
+.pdf-exporting [data-cell] div,
+.pdf-exporting .shift-letter,
+.pdf-exporting tr:nth-child(n+12) td:not(:first-child) {
+    line-height: 1 !important;
+    padding-top: 2px !important;
+    padding-bottom: 8px !important;
+    vertical-align: middle !important;
+}
 /* 3. إخفاء أزرار الإضافة (+ Add Code / + Add Counter) والملاحظة وأيقونات القلم أثناء الطباعة و الـ PDF */
 @media print {
     .no-print,
