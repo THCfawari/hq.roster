@@ -140,7 +140,47 @@
     text-indent: 0 !important;
     font-weight: 800 !important;
 }
-</style>
+/* 1. منع قص الحروف في الهيدر والأسماء وأوقات الشفتات في الشاشة والـ PDF */
+#unifiedRosterWrapper th,
+#unifiedRosterWrapper td,
+#unifiedRosterWrapper span,
+#unifiedRosterWrapper div {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.4 !important;
+}
+
+/* 2. رفع وتوسيط حروف الشفتات أفقياً وعمودياً داخل المربعات */
+#unifiedRosterWrapper .shift-letter,
+#unifiedRosterWrapper [data-cell] {
+    vertical-align: middle !important;
+    text-align: center !important;
+    line-height: 1 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* 3. إخفاء أزرار الإضافة (+ Add Code / + Add Counter) والملاحظة وأيقونات القلم أثناء الطباعة و الـ PDF */
+@media print {
+    .no-print,
+    #unifiedRosterWrapper tr:last-child,
+    #unifiedRosterWrapper [data-action="open-add-code-modal"],
+    #unifiedRosterWrapper [data-action="open-add-counter-modal"],
+    #unifiedRosterWrapper svg,
+    #unifiedRosterWrapper [data-action^="open-edit"] svg {
+        display: none !important;
+    }
+}
+
+.pdf-exporting .no-print,
+.pdf-exporting tr:last-child,
+.pdf-exporting [data-action="open-add-code-modal"],
+.pdf-exporting [data-action="open-add-counter-modal"],
+.pdf-exporting svg,
+.pdf-exporting [data-action^="open-edit"] svg {
+    display: none !important;
+}
+    </style>
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -2283,6 +2323,21 @@ function updateBottomCounters() {
 }
 
 setInterval(updateBottomCounters, 400);
+</script>
+<script>
+// مراقبة النقر على زر التصدير للـ PDF لتفعيل وضع الطباعة النظيف تلقائياً
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('button');
+    if (btn && (btn.textContent.includes('PDF') || btn.id.toLowerCase().includes('pdf'))) {
+        const wrapper = document.getElementById('unifiedRosterWrapper');
+        if (wrapper) {
+            wrapper.classList.add('pdf-exporting');
+            setTimeout(() => {
+                wrapper.classList.remove('pdf-exporting');
+            }, 2500);
+        }
+    }
+}, true);
 </script>
 </body>
 </html>
