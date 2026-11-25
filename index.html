@@ -2213,5 +2213,80 @@
             bootAppWithFirebase();
         })();
     </script>
+<script>
+// تحديث وتوسيط العدادات السفلية تلقائياً بعد كل رسم للجدول
+function fixBottomCounters() {
+    const wrapper = document.getElementById('unifiedRosterWrapper');
+    if (!wrapper) return;
+    const rows = Array.from(wrapper.querySelectorAll('tr'));
+    const totalRowIndex = rows.findIndex(r => r.textContent.includes('Total Active'));
+    if (totalRowIndex === -1) return;
+
+    // 1. جمع شفتات الموظفين لكل عمود (يوم)
+    const empRows = rows.filter(r => r.hasAttribute('data-emp-row-id') || r.querySelector('[data-cell]'));
+    const dayCounts = {}; // { colIndex: { 'A': 4, 'B': 3, ... } }
+
+    empRows.forEach(tr => {
+        const cells = Array.from(tr.children);
+        cells.forEach((td, colIdx) => {
+            if (colIdx === 0) return;
+            const code = td.textContent.trim().toUpperCase();
+            if (!code) return;
+            if (!dayCounts[colIdx]) dayCounts[colIdx] = {};
+            dayCounts[colIdx][code] = (dayCounts[colIdx][code] || 0) + 1;
+        });
+    });
+
+    // 2. تحديث صفوف العدادات التي تلي Total Active مباشرة
+    for (let i = totalRowIndex + 1; i < rows.length; i++) {
+        const tr = rows[i];
+        const firstCell = tr.children[0];
+        if (!firstCell || firstCell.textContent.includes('Add Counter')) break;
+
+        // استخراج حرف الشفت وتوسيطه بدون أوقات
+        const rawLabel = firstCell.textContent.trim();
+        const codeMatch = rawLabel.match(/^([A-Za-z0-9+]+)/);
+        if (!codeMatch) continue;
+        const targetExpr = codeMatch[1].toUpperCase();
+
+        // إزالة الوقت وتوسيط الحرف في المربع الأيسر
+        firstCell.textContent = targetExpr;
+        firstCell.style.textAlign = 'center';
+        firstCell.style.verticalAlign = 'middle';
+        firstCell.style.fontWeight = '900';
+
+        const codes = targetExpr.split('+').map(c => c.trim()).filter(Boolean);
+
+        // تعبئة أرقام كل يوم في الخلايا البيضاء
+        for (let colIdx = 1; colIdx < tr.children.length; colIdx++) {
+            const td = tr.children[colIdx];
+            if (!td || td.colSpan > 1) continue;
+            let sum = 0;
+            codes.forEach(c => {
+                sum += (dayCounts[colIdx] && dayCounts[colIdx][c]) ? dayCounts[colIdx][c] : 0;
+            });
+            td.textContent = sum;
+            td.style.color = '#000000';
+            td.style.fontWeight = '800';
+            td.style.textAlign = 'center';
+        }
+    }
+}
+
+// مراقبة أي تحديث في الجدول وتطبيق التحديث تلقائياً
+const counterObserver = new MutationObserver(() => {
+    counterObserver.disconnect();
+    fixBottomCounters();
+    const target = document.getElementById('unifiedRosterWrapper');
+    if (target) counterObserver.observe(target, { childList: true, subtree: true });
+});
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        fixBottomCounters();
+        const target = document.getElementById('unifiedRosterWrapper');
+        if (target) counterObserver.observe(target, { childList: true, subtree: true });
+    }, 300);
+});
+</script>
 </body>
 </html>
