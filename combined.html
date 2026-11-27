@@ -897,6 +897,58 @@
 
                 html += `</tbody></table>`;
                 container.innerHTML = html;
+
+                // Ensure Total Active & bottom counter rows (A, B, C, etc.) always reflect live grid values cleanly
+                try {
+                    const tableNode = container.querySelector("table.roster-grid");
+                    if (tableNode) {
+                        const allRows = Array.from(tableNode.querySelectorAll("tbody tr"));
+                        const empRows = allRows.filter(tr => {
+                            const firstTd = tr.querySelector("td");
+                            if (!firstTd) return false;
+                            const txt = (firstTd.textContent || "").trim();
+                            return !txt.startsWith("--- EMS TEAM") && txt !== "Total Active" && !CORE_COUNTER_CODES.includes(txt) && !monthRec_check(txt);
+                        });
+                        function monthRec_check(lbl) {
+                            return activeCounterCodes.includes(lbl);
+                        }
+                        const dayCount = daysList.length;
+                        for (let colIdx = 1; colIdx <= dayCount; colIdx++) {
+                            let activeSum = 0;
+                            const countsByCode = {};
+                            empRows.forEach(tr => {
+                                const td = tr.children[colIdx];
+                                if (!td) return;
+                                const rawVal = (td.textContent || "").trim().toUpperCase();
+                                if (!rawVal) return;
+                                if (ACTIVE_SHIFT_CODES.includes(rawVal)) activeSum++;
+                                countsByCode[rawVal] = (countsByCode[rawVal] || 0) + 1;
+                            });
+                            allRows.forEach(tr => {
+                                const firstTd = tr.querySelector("td");
+                                const targetTd = tr.children[colIdx];
+                                if (!firstTd || !targetTd) return;
+                                const label = (firstTd.textContent || "").trim().toUpperCase();
+                                if (label === "TOTAL ACTIVE") {
+                                    targetTd.innerHTML = `<span>${activeSum}</span>`;
+                                } else if (activeCounterCodes.includes(label)) {
+                                    const parts = label.split("+").map(s => s.trim()).filter(Boolean);
+                                    let sumVal = 0;
+                                    parts.forEach(p => { sumVal += (countsByCode[p] || 0); });
+                                    const isCoreRow = CORE_COUNTER_CODES.includes(label);
+                                    if (isCoreRow && sumVal === 0) {
+                                        targetTd.style.backgroundColor = "#dc2626";
+                                        targetTd.style.color = "#ffffff";
+                                    } else if (isCoreRow) {
+                                        targetTd.style.backgroundColor = "#ffffff";
+                                        targetTd.style.color = "#000000";
+                                    }
+                                    targetTd.innerHTML = `<span>${sumVal}</span>`;
+                                }
+                            });
+                        }
+                    }
+                } catch (e) {}
             }
 
             function showToast(msg, type) {
