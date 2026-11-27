@@ -9,6 +9,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <!-- High-Resolution Direct PDF Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -35,7 +38,21 @@
         }
         .roster-grid th,
         .roster-grid td {
-            border: 1px solid #000000;
+            border: 1.5px solid #000000;
+        }
+        .roster-grid th, .roster-grid td, #unifiedRosterWrapper table th, #unifiedRosterWrapper table td {
+            font-weight: 800 !important;
+            color: #000000 !important;
+            border-color: #000000 !important;
+            border-width: 1.5px !important;
+        }
+        #unifiedRosterWrapper table td[style*="color: #ffffff"],
+        #unifiedRosterWrapper table td[style*="color: rgb(255, 255, 255)"],
+        #unifiedRosterWrapper table td[style*="background-color: #1e3a8a"],
+        #unifiedRosterWrapper table td[style*="background-color: #dc2626"],
+        #unifiedRosterWrapper table td[style*="background-color: #2563eb"],
+        #unifiedRosterWrapper table td[style*="background-color: #475569"] {
+            color: #ffffff !important;
         }
 
         .shift-letter {
@@ -107,6 +124,45 @@
                 transform-origin: top left;
                 zoom: var(--print-scale, 0.68);
             }
+            .roster-grid { border-collapse: separate !important; border-spacing: 0 !important; border-top: 1.5px solid #000000 !important; border-left: 1.5px solid #000000 !important; }
+            .roster-grid th, .roster-grid td { border-top: none !important; border-left: none !important; border-right: 1.5px solid #000000 !important; border-bottom: 1.5px solid #000000 !important; }
+        }
+
+        /* توسيط مثالي لجميع الخلايا والنصوص والحروف والأرقام في الـ PDF بدون أي قص */
+        #unifiedRosterWrapper.pdf-exporting table.roster-grid th,
+        #unifiedRosterWrapper.pdf-exporting table.roster-grid td {
+            vertical-align: middle !important;
+            line-height: 1.35 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            overflow: visible !important;
+        }
+
+        #unifiedRosterWrapper.pdf-exporting table.roster-grid th > span,
+        #unifiedRosterWrapper.pdf-exporting table.roster-grid td > span {
+            display: inline-block !important;
+            position: relative !important;
+            top: -4px !important;
+            line-height: 1.2 !important;
+            overflow: visible !important;
+        }
+
+        #unifiedRosterWrapper.pdf-exporting table.roster-grid th > div,
+        #unifiedRosterWrapper.pdf-exporting table.roster-grid td > div {
+            display: flex !important;
+            align-items: center !important;
+            height: 100% !important;
+            position: relative !important;
+            top: -3px !important;
+            overflow: visible !important;
+        }
+
+        #unifiedRosterWrapper.pdf-exporting .truncate {
+            overflow: visible !important;
+            text-overflow: clip !important;
+            white-space: nowrap !important;
+            line-height: 1.4 !important;
+            height: auto !important;
         }
     </style>
 </head>
@@ -149,6 +205,7 @@
 
     <!-- Main App Wrapper -->
     <div id="protectedAppShell" class="hidden min-h-screen flex flex-col">
+        <div id="toastContainer" class="fixed bottom-4 right-3 left-3 sm:left-auto sm:right-5 z-50 flex flex-col gap-2 sm:max-w-md pointer-events-none no-print"></div>
 
         <!-- Top Application Bar -->
         <header class="bg-white border-b border-slate-300 sticky top-0 z-30 shadow-xs no-print">
@@ -198,6 +255,11 @@
                         <button type="button" id="nextMonthBtn" data-action="next-month"
                             class="w-7 h-7 rounded-lg bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 flex items-center justify-center text-xs font-black text-slate-700 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
                             ▶
+                        </button>
+              
+                        <button type="button" data-action="jump-today"
+                            class="h-7 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-extrabold transition cursor-pointer">
+                            Today
                         </button>
                     </div>
 
@@ -605,7 +667,7 @@
                 `;
                 daysList.forEach(dObj => {
                     html += `
-                        <th style="width: ${dayColW}px; min-width: ${dayColW}px; background-color: #74b3ce; border-bottom: ${BOLD_BORDER};" class="py-1 text-xs font-black text-slate-950">
+                        <th style="width: ${dayColW}px; min-width: ${dayColW}px; height: 28px; background-color: #74b3ce; border-bottom: ${BOLD_BORDER};" class="py-1.5 text-xs sm:text-[13px] font-black text-slate-950">
                             ${dObj.day}
                         </th>
                     `;
@@ -627,7 +689,7 @@
                 daysList.forEach(dObj => {
                     const bg = dObj.isWeekend ? "#dce6f2" : "#ffffff";
                     html += `
-                        <th style="width: ${dayColW}px; min-width: ${dayColW}px; background-color: ${bg}; border-bottom: ${BOLD_BORDER};" class="py-1 text-[11px] font-extrabold text-slate-900">
+                        <th style="width: ${dayColW}px; min-width: ${dayColW}px; height: 26px; background-color: ${bg}; border-bottom: ${BOLD_BORDER};" class="py-1.5 text-[11px] sm:text-xs font-extrabold text-slate-900">
                             ${dObj.abbr}
                         </th>
                     `;
@@ -733,7 +795,7 @@
 
                 // 2. EMS Team Divider Row
                 if (showDividerRow) {
-                    html += `<tr style="border-top: 2px solid #000000; border-bottom: 2px solid #000000;">`;
+                    html += `<tr>`;
                     html += `
                         <td style="${empStickyStyle} height: 24px; background-color: #dbeafe; color: #1e3a8a; border-right: ${BOLD_BORDER}; border-top: 2px solid #000000; border-bottom: 2px solid #000000;"
                             class="sticky-emp-col px-2.5 text-center text-[11px] font-black tracking-wider">
@@ -753,7 +815,7 @@
                 visEMS.forEach(emp => renderEmpRow(emp, emsData.assignments, "EMS"));
 
                 // 4. Consolidated Total Active Row (A, B, C, D)
-                html += `<tr style="border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};">`;
+                html += `<tr>`;
                 html += `
                     <td style="${empStickyStyle} height: ${rowH}px; background-color: #a3c9b8; border-right: ${BOLD_BORDER}; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"
                         class="sticky-emp-col px-2.5 text-center text-xs font-black text-slate-950">
@@ -773,32 +835,38 @@
                 html += `</tr>`;
                 globalRowIndex++;
 
-                // 5. Consolidated Counter Rows (A, B, C + any enabled rows like D)
-                activeCounterCodes.forEach(codeStr => {
-                    const def = getCodeDef(codeStr);
+                // 5. Consolidated Counter Rows (A, B, C + any enabled rows like D or A+B)
+                activeCounterCodes.forEach(rawCounterItem => {
+                    const codeStr = String(rawCounterItem || "").trim().split(/[\s(]/)[0].trim().toUpperCase();
+                    if (!codeStr) return;
+                    const codesToSum = codeStr.split("+").map(s => s.trim()).filter(Boolean);
+                    const primaryCode = codesToSum[0] || codeStr;
+                    const def = getCodeDef(primaryCode);
                     const isCore = CORE_COUNTER_CODES.includes(codeStr);
                     const txtColor = resolveCodeTextColor(def);
                     const patCls = getPatternClass(def.pattern);
                     const crispCls = (patCls === "pattern-stripes" && txtColor.toLowerCase() === "#000000") ? "crisp-striped-text" : "";
-                    const countsMap = codePerDay[codeStr] || {};
 
                     html += `<tr>`;
                     html += `
-                        <td style="${empStickyStyle} height: ${rowH}px; background-color: ${escapeHtml(def.color)}; color: ${escapeHtml(txtColor)}; border-right: ${BOLD_BORDER};"
+                        <td style="${empStickyStyle} height: ${rowH}px; background-color: ${escapeHtml(def.color)}; color: ${escapeHtml(txtColor)}; border-right: ${BOLD_BORDER}; vertical-align: middle; text-align: center;"
                             class="sticky-emp-col px-2.5 text-center ${patCls} ${crispCls}">
-                            <span class="shift-letter">${escapeHtml(def.code)}</span>
-                            <span class="text-[11px] font-bold opacity-85">(${escapeHtml(def.label)})</span>
+                            <span class="shift-letter" style="font-size: 13px; font-weight: 800;">${escapeHtml(codeStr)}</span>
                         </td>
                     `;
                     daysList.forEach(dObj => {
-                        const val = countsMap[dObj.day] || 0;
+                        let val = 0;
+                        codesToSum.forEach(cKey => {
+                            const cMap = codePerDay[cKey];
+                            if (cMap && typeof cMap[dObj.day] === "number") val += cMap[dObj.day];
+                        });
                         const isZeroAlert = isCore && (val === 0);
                         const cellBg = isZeroAlert ? "#dc2626" : "#ffffff";
-                        const cellText = isZeroAlert ? "#ffffff" : "#0f172a";
+                        const cellText = isZeroAlert ? "#ffffff" : "#000000";
                         const cellFont = isZeroAlert ? "text-sm font-black" : "text-xs font-extrabold";
 
                         html += `
-                            <td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: ${cellBg}; color: ${cellText};"
+                            <td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: ${cellBg}; color: ${cellText}; vertical-align: middle;"
                                 class="${cellFont}">
                                 ${val}
                             </td>
@@ -813,16 +881,133 @@
                 container.innerHTML = html;
             }
 
-            function handlePrintPDF() {
+            function showToast(msg, type) {
+                const container = document.getElementById("toastContainer");
+                if (!container) return;
+                const palette = { success: "bg-emerald-800 text-white border-emerald-600", error: "bg-rose-800 text-white border-rose-600", warning: "bg-amber-800 text-white border-amber-600", info: "bg-slate-800 text-white border-slate-600" };
+                const el = document.createElement("div");
+                el.className = "px-4 py-2.5 rounded-xl border shadow-lg text-xs font-semibold pointer-events-auto transition-opacity duration-300 " + (palette[type] || palette.info);
+                el.textContent = msg;
+                container.appendChild(el);
+                setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 300); }, 3400);
+            }
+
+            async function handlePrintPDF() {
                 const wrapper = document.getElementById("unifiedRosterWrapper");
-                if (wrapper) {
-                    const tableEl = wrapper.querySelector("table");
-                    const tableWidth = tableEl ? tableEl.offsetWidth : 1480;
-                    const printableLandscapePx = 1040;
-                    const scale = Math.min(1, Math.max(0.45, Number((printableLandscapePx / tableWidth).toFixed(3))));
-                    document.documentElement.style.setProperty("--print-scale", String(scale));
+                const scrollContainer = document.getElementById("rosterScrollContainer");
+                const outerCard = document.getElementById("rosterOuterCard");
+                if (!wrapper || !window.html2canvas || !window.jspdf) {
+                    window.print();
+                    return;
                 }
-                window.print();
+
+                showToast("Generating High-Res Combined PDF...", "info");
+
+                const prevOverflow = scrollContainer ? scrollContainer.style.overflow : "";
+                const prevCardOverflow = outerCard ? outerCard.style.overflow : "";
+                const prevWidth = wrapper.style.width;
+
+                try {
+                    renderAll();
+                    if (scrollContainer) scrollContainer.style.overflow = "visible";
+                    if (outerCard) outerCard.style.overflow = "visible";
+                    wrapper.style.width = "max-content";
+                    wrapper.classList.add("pdf-exporting");
+
+                    wrapper.querySelectorAll("table.roster-grid th, table.roster-grid td").forEach(cell => {
+                        if (cell.children.length === 0 && cell.textContent.trim() !== "") {
+                            cell.innerHTML = `<span>${cell.innerHTML}</span>`;
+                        }
+                    });
+
+                    const stickyCells = wrapper.querySelectorAll(".sticky-emp-col");
+                    stickyCells.forEach(el => {
+                        el.dataset.prevPos = el.style.position;
+                        el.style.position = "static";
+                        el.style.boxShadow = "none";
+                    });
+
+                    const tableEl = wrapper.querySelector("table.roster-grid");
+                    const gridCells = wrapper.querySelectorAll(".roster-grid th, .roster-grid td");
+                    if (tableEl) {
+                        tableEl.dataset.prevCollapse = tableEl.style.borderCollapse;
+                        tableEl.style.borderCollapse = "separate";
+                        tableEl.style.borderSpacing = "0";
+                        tableEl.style.borderTop = "1.5px solid #000000";
+                        tableEl.style.borderLeft = "1.5px solid #000000";
+                    }
+                    gridCells.forEach(cell => {
+                        cell.dataset.prevBorderTop = cell.style.borderTop;
+                        cell.dataset.prevBorderLeft = cell.style.borderLeft;
+                        cell.dataset.prevBorderRight = cell.style.borderRight;
+                        cell.dataset.prevBorderBottom = cell.style.borderBottom;
+                        cell.style.borderTop = "none";
+                        cell.style.borderLeft = "none";
+                        if (!cell.style.borderRight || cell.style.borderRight.startsWith("1px")) {
+                            cell.style.borderRight = "1.5px solid #000000";
+                        }
+                        if (!cell.style.borderBottom || cell.style.borderBottom.startsWith("1px")) {
+                            cell.style.borderBottom = "1.5px solid #000000";
+                        }
+                    });
+
+                    const canvas = await html2canvas(wrapper, {
+                        scale: 2.5,
+                        useCORS: true,
+                        backgroundColor: "#ffffff",
+                        logging: false
+                    });
+
+                    wrapper.classList.remove("pdf-exporting");
+
+                    if (tableEl) {
+                        tableEl.style.borderCollapse = tableEl.dataset.prevCollapse || "";
+                        tableEl.style.borderSpacing = "";
+                        tableEl.style.borderTop = "";
+                        tableEl.style.borderLeft = "";
+                    }
+                    gridCells.forEach(cell => {
+                        cell.style.borderTop = cell.dataset.prevBorderTop || "";
+                        cell.style.borderLeft = cell.dataset.prevBorderLeft || "";
+                        cell.style.borderRight = cell.dataset.prevBorderRight || "";
+                        cell.style.borderBottom = cell.dataset.prevBorderBottom || "";
+                    });
+                    stickyCells.forEach(el => {
+                        el.style.position = el.dataset.prevPos || "";
+                        el.style.boxShadow = "";
+                    });
+                    if (scrollContainer) scrollContainer.style.overflow = prevOverflow;
+                    if (outerCard) outerCard.style.overflow = prevCardOverflow;
+                    wrapper.style.width = prevWidth;
+                    renderAll();
+
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+                    const pageW = pdf.internal.pageSize.getWidth();
+                    const pageH = pdf.internal.pageSize.getHeight();
+                    const margin = 6;
+                    const availW = pageW - margin * 2;
+                    const availH = pageH - margin * 2;
+
+                    const ratio = Math.min(availW / canvas.width, availH / canvas.height);
+                    const imgW = canvas.width * ratio;
+                    const imgH = canvas.height * ratio;
+                    const offsetX = margin + (availW - imgW) / 2;
+                    const offsetY = margin;
+
+                    const imgData = canvas.toDataURL("image/png", 1.0);
+                    pdf.addImage(imgData, "PNG", offsetX, offsetY, imgW, imgH, undefined, "FAST");
+
+                    pdf.save(`Combined_Roster_${state.currentMonthKey}.pdf`);
+                    showToast("High-Res Combined PDF downloaded successfully!", "success");
+                } catch (err) {
+                    wrapper.classList.remove("pdf-exporting");
+                    if (scrollContainer) scrollContainer.style.overflow = prevOverflow;
+                    if (outerCard) outerCard.style.overflow = prevCardOverflow;
+                    wrapper.style.width = prevWidth;
+                    renderAll();
+                    window.print();
+                }
             }
 
             function exportCombinedCSV() {
@@ -912,6 +1097,11 @@
                         state.currentMonthKey = normalizeRosterMonthKey(candidateKey);
                         renderAll();
                     }
+                } else if (action === "jump-today") {
+                    const now = new Date();
+                    const rawKey = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+                    state.currentMonthKey = rawKey < "2026-12" ? "2026-12" : (rawKey > "2030-12" ? "2030-12" : normalizeRosterMonthKey(rawKey));
+                    renderAll();
                 } else if (action === "print-roster") {
                     handlePrintPDF();
                 } else if (action === "export-csv") {
