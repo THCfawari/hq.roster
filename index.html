@@ -1345,7 +1345,7 @@
                 html += `<thead><tr style="border-bottom: ${BOLD_BORDER};">`;
                 html += `
                     <th ${headerEditAttr} style="${empStickyStyle} background-color: #a3c9b8; border-right: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"
-                        class="sticky-emp-col py-1.5 px-1.5 sm:px-2.5 text-center text-[11px] sm:text-sm font-black text-slate-950 tracking-wide ${headerCursor}">
+                        class="sticky-emp-col py-1.5 px-1.5 sm:px-2.5 text-center text-xs sm:text-sm font-black text-slate-950 tracking-wide ${headerCursor}">
                         <div class="flex items-center justify-center gap-1 truncate">
                             <span class="truncate">${escapeHtml(state.departmentTitle)}</span>
                             ${editable ? `<span class="text-[10px] text-slate-700 font-bold no-print shrink-0">✎</span>` : ""}
@@ -1368,7 +1368,7 @@
                 }
 
                 daysList.forEach(dObj => {
-                    html += `<th style="width: ${dayColW}px; min-width: ${dayColW}px; background-color: #74b3ce; border-bottom: ${BOLD_BORDER};" class="py-1 text-[11px] sm:text-xs font-black text-slate-950">${dObj.day}</th>`;
+                    html += `<th style="width: ${dayColW}px; min-width: ${dayColW}px; height: 28px; background-color: #74b3ce; border-bottom: ${BOLD_BORDER};" class="py-1.5 text-xs sm:text-[13px] font-black text-slate-950">${dObj.day}</th>`;
                 });
                 html += `<th rowspan="2" colspan="3" style="width: ${divW + legendCodeW + legendLabelW}px; background-color: #74b3ce; border-left: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};"></th></tr>`;
 
@@ -1396,7 +1396,7 @@
 
                 daysList.forEach(dObj => {
                     const bg = dObj.isWeekend ? "#dce6f2" : "#ffffff";
-                    html += `<th style="width: ${dayColW}px; min-width: ${dayColW}px; background-color: ${bg}; border-bottom: ${BOLD_BORDER};" class="py-1 text-[10px] sm:text-[11px] font-extrabold text-slate-900">${dObj.abbr}</th>`;
+                    html += `<th style="width: ${dayColW}px; min-width: ${dayColW}px; height: 26px; background-color: ${bg}; border-bottom: ${BOLD_BORDER};" class="py-1.5 text-[11px] sm:text-xs font-extrabold text-slate-900">${dObj.abbr}</th>`;
                 });
                 html += `</tr></thead>`;
 
@@ -1517,7 +1517,7 @@
                     globalRowIndex++;
                 });
 
-                html += `<tr style="border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};">`;
+                html += `<tr>`;
                 html += `<td style="${empStickyStyle} height: ${rowH}px; background-color: #a3c9b8; border-right: ${BOLD_BORDER}; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};" class="sticky-emp-col px-1.5 sm:px-2.5 text-center text-[11px] sm:text-xs font-black text-slate-950">Total Active</td>`;
                 if (prevWeekData) {
                     html += `<td colspan="${prevColsCount}" style="height: ${rowH}px; background-color: #e2e8f0; border-right: ${BOLD_BORDER}; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER};" class="text-[10px] font-extrabold text-slate-600 no-print">${escapeHtml(prevWeekData.prevLabel)} (Last 7d)</td>`;
