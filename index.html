@@ -371,6 +371,10 @@
                                 class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition cursor-pointer">
                                 📋 Audit Log
                             </button>
+                            <button type="button" data-action="open-backups-modal"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition cursor-pointer">
+                                🛡️ Backups
+                            </button>
                         </div>
                     </div>
 
@@ -625,9 +629,15 @@
                 <button type="button" data-action="close-modal" data-modal="clearMonthModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
             </div>
             <p id="clearMonthDesc" class="text-xs text-slate-600 leading-relaxed"></p>
+            <div class="space-y-1.5">
+                <label class="block text-[11px] font-extrabold text-slate-700">Type <span class="text-rose-600 font-black">CLEAR</span> to confirm:</label>
+                <input type="text" id="clearMonthConfirmInput" placeholder="CLEAR" autocomplete="off"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-black uppercase text-center focus:outline-none focus:ring-2 focus:ring-rose-500">
+            </div>
             <div class="flex items-center justify-end gap-2 pt-1">
                 <button type="button" data-action="close-modal" data-modal="clearMonthModal" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">Cancel</button>
-                <button type="button" data-action="confirm-clear-month" class="px-5 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white">Clear Month</button>
+                <button type="button" id="confirmClearMonthBtn" data-action="confirm-clear-month" disabled
+                    class="px-5 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white disabled:opacity-40 disabled:cursor-not-allowed">Clear Month</button>
             </div>
         </div>
     </div>
@@ -690,6 +700,20 @@
                 <button type="button" data-action="close-modal" data-modal="auditLogModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
             </div>
             <div id="auditLogListContainer" class="space-y-1.5 text-xs"></div>
+        </div>
+    </div>
+
+    <div id="cloudBackupsModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5 shadow-xl border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="text-base font-extrabold text-slate-900">🛡️ Cloud Auto-Backups (Last 15 Snapshots)</h3>
+                <button type="button" data-action="close-modal" data-modal="cloudBackupsModal" class="px-2 py-1 rounded-lg hover:bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
+            </div>
+            <div class="flex items-center justify-between gap-2 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 text-xs">
+                <span class="font-bold text-emerald-950">Create an instant manual snapshot now:</span>
+                <button type="button" data-action="create-manual-backup" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold shrink-0 cursor-pointer">+ Backup Now</button>
+            </div>
+            <div id="cloudBackupsListContainer" class="space-y-2 text-xs"></div>
         </div>
     </div>
 
@@ -967,8 +991,34 @@
                 };
             }
 
+            function createCloudBackupSnapshot(reasonLabel) {
+                if (!dbInstance || !currentUsername || !initialCloudLoaded) return Promise.resolve();
+                if (!Array.isArray(state.employees) || state.employees.length === 0) return Promise.resolve();
+                const ts = Date.now();
+                const snapPayload = {
+                    reason: reasonLabel || "Auto Backup",
+                    createdBy: currentUsername,
+                    createdAt: ts,
+                    timeFormatted: new Date(ts).toLocaleString("en-GB"),
+                    monthKey: state.currentMonthKey,
+                    payload: buildExportPayload()
+                };
+                const backupsRef = dbInstance.ref(DB_BASE_PATH + "/backups");
+                return backupsRef.child(String(ts)).set(snapPayload).then(() => {
+                    backupsRef.once("value").then(snap => {
+                        const keys = Object.keys(snap.val() || {}).sort();
+                        if (keys.length > 15) {
+                            const cleanup = {};
+                            keys.slice(0, keys.length - 15).forEach(k => { cleanup[k] = null; });
+                            backupsRef.update(cleanup);
+                        }
+                    });
+                });
+            }
+
             function persistDraft(auditNote) {
                 if (!canEditCurrentView() || !draftRef || !initialCloudLoaded) return;
+                if (!Array.isArray(state.employees) || state.employees.length === 0) return;
                 const payload = buildExportPayload();
                 draftCache = JSON.parse(JSON.stringify(payload));
                 draftRef.set(payload).catch(() => updateStatusBadge("offline"));
@@ -993,6 +1043,7 @@
                 const payload = buildExportPayload();
                 draftCache = JSON.parse(JSON.stringify(payload));
                 publishedCache = JSON.parse(JSON.stringify(payload));
+                createCloudBackupSnapshot("Published " + formatMonthBadge(state.currentMonthKey) + " (" + monthRec.version + ")");
                 draftRef.set(payload);
                 publishedRef.set(payload).then(() => {
                     renderPreservingScroll();
@@ -1688,6 +1739,43 @@
                 });
             }
 
+            function openCloudBackupsModal() {
+                if (!dbInstance) return;
+                dbInstance.ref(DB_BASE_PATH + "/backups").once("value").then(function (snap) {
+                    const raw = snap.val() || {};
+                    const items = Object.keys(raw).map(k => ({ key: k, ...raw[k] })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                    document.getElementById("cloudBackupsListContainer").innerHTML = items.map(b => `
+                        <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800">
+                            <div class="min-w-0">
+                                <div class="font-extrabold text-slate-900 truncate">${escapeHtml(b.reason || "Snapshot")}</div>
+                                <div class="text-[11px] text-slate-500">By <strong>${escapeHtml(b.createdBy || "unknown")}</strong> • ${escapeHtml(b.timeFormatted || "")}</div>
+                            </div>
+                            <button type="button" data-action="restore-cloud-backup" data-key="${escapeHtml(b.key)}"
+                                class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-extrabold shrink-0 cursor-pointer">
+                                Restore
+                            </button>
+                        </div>
+                    `).join("") || `<p class="text-slate-400 text-center py-3">No backups saved yet. Backups are created automatically on every Publish.</p>`;
+                    openModal("cloudBackupsModal");
+                });
+            }
+
+            function restoreCloudBackup(backupKey) {
+                if (!canEditCurrentView() || !dbInstance || !backupKey) return;
+                dbInstance.ref(DB_BASE_PATH + "/backups/" + backupKey).once("value").then(function (snap) {
+                    const record = snap.val();
+                    if (!record || !record.payload) { showToast("Backup payload not found.", "error"); return; }
+                    createCloudBackupSnapshot("Safety snapshot before restore").then(() => {
+                        pushUndoSnapshot();
+                        applyPayloadToState(record.payload);
+                        renderPreservingScroll();
+                        persistDraft("Restored backup from " + (record.timeFormatted || backupKey));
+                        closeModal("cloudBackupsModal");
+                        showToast("Backup restored to Draft! Click 'Publish & Approve' when ready.", "success");
+                    });
+                });
+            }
+
             function runSyncFromPlanner(sourcePath) {
                 if (!canEditCurrentView() || !dbInstance || !initialCloudLoaded) return;
                 const resEl = document.getElementById("syncLeavesResultText");
@@ -1738,7 +1826,7 @@
             }
 
             async function handlePrintPDF() {
-                ["changePasswordModal", "editHeaderModal", "editEmpModal", "codeEditorModal", "addCounterRowModal", "clearMonthModal", "syncLeavesModal", "rulesAlertsModal", "readReceiptsModal", "auditLogModal"].forEach(closeModal);
+                ["changePasswordModal", "editHeaderModal", "editEmpModal", "codeEditorModal", "addCounterRowModal", "clearMonthModal", "syncLeavesModal", "rulesAlertsModal", "readReceiptsModal", "auditLogModal", "cloudBackupsModal"].forEach(closeModal);
 
                 const wrapper = document.getElementById("unifiedRosterWrapper");
                 const scrollContainer = document.getElementById("rosterScrollContainer");
@@ -1968,6 +2056,7 @@
             });
             document.getElementById("empFilterSelect").addEventListener("change", function (e) { state.filterEmpId = e.target.value; renderUnifiedRosterTable(ensureMonthRecord(state.currentMonthKey)); });
             document.getElementById("empSearchInput").addEventListener("input", function (e) { state.searchQuery = e.target.value; renderUnifiedRosterTable(ensureMonthRecord(state.currentMonthKey)); });
+            document.getElementById("clearMonthConfirmInput").addEventListener("input", function (e) { const btn = document.getElementById("confirmClearMonthBtn"); if (btn) btn.disabled = (e.target.value.trim().toUpperCase() !== "CLEAR"); });
             document.getElementById("codeEditorColorPicker").addEventListener("input", function (e) { document.getElementById("codeEditorHexInput").value = e.target.value.toUpperCase(); updateCodePreviewBox(); });
             document.getElementById("codeEditorHexInput").addEventListener("input", function (e) { const val = e.target.value.trim(); if (/^#[0-9A-Fa-f]{6}$/.test(val)) { document.getElementById("codeEditorColorPicker").value = val; updateCodePreviewBox(); } });
             document.getElementById("codeEditorTextColorPicker").addEventListener("input", function (e) { document.getElementById("codeEditorTextHexInput").value = e.target.value.toUpperCase(); updateCodePreviewBox(); });
@@ -2085,8 +2174,31 @@
                     Object.keys(prevRec.assignments).forEach(empId => { copiedAssign[empId] = {}; Object.keys(prevRec.assignments[empId]).forEach(dKey => { if (Number(dKey) <= maxDaysCurr) copiedAssign[empId][dKey] = prevRec.assignments[empId][dKey]; }); });
                     monthRec.assignments = copiedAssign; monthRec.counterRows = [...(prevRec.counterRows || [])]; monthRec.syncedLeaves = {}; monthRec.overrides = {};
                     renderPreservingScroll(); persistDraft("Copied shifts from " + formatMonthBadge(prevKey));
-                } else if (action === "open-clear-month-modal" && canEditCurrentView()) { document.getElementById("clearMonthDesc").innerHTML = "Clear all shifts for <strong>" + formatMonthBadge(state.currentMonthKey) + "</strong>?"; openModal("clearMonthModal"); }
-                else if (action === "confirm-clear-month" && canEditCurrentView()) { pushUndoSnapshot(); const monthRec = ensureMonthRecord(state.currentMonthKey); monthRec.assignments = {}; monthRec.syncedLeaves = {}; monthRec.overrides = {}; monthRec.locked = false; closeModal("clearMonthModal"); renderPreservingScroll(); persistDraft("Cleared month"); }
+                } else if (action === "open-backups-modal" && state.isAdmin) openCloudBackupsModal();
+                else if (action === "create-manual-backup" && canEditCurrentView()) { createCloudBackupSnapshot("Manual Backup (" + formatMonthBadge(state.currentMonthKey) + ")").then(() => { showToast("Backup snapshot saved!", "success"); openCloudBackupsModal(); }); }
+                else if (action === "restore-cloud-backup" && canEditCurrentView()) restoreCloudBackup(actionEl.dataset.key);
+                else if (action === "open-clear-month-modal" && canEditCurrentView()) {
+                    document.getElementById("clearMonthDesc").innerHTML = "Clear all shifts for <strong>" + formatMonthBadge(state.currentMonthKey) + "</strong>? An automatic backup will be saved first.";
+                    const cInp = document.getElementById("clearMonthConfirmInput");
+                    const cBtn = document.getElementById("confirmClearMonthBtn");
+                    if (cInp) cInp.value = "";
+                    if (cBtn) cBtn.disabled = true;
+                    openModal("clearMonthModal");
+                }
+                else if (action === "confirm-clear-month" && canEditCurrentView()) {
+                    const cInp = document.getElementById("clearMonthConfirmInput");
+                    if (!cInp || cInp.value.trim().toUpperCase() !== "CLEAR") { showToast("Please type CLEAR to confirm.", "warning"); return; }
+                    createCloudBackupSnapshot("Before Clear Month (" + formatMonthBadge(state.currentMonthKey) + ")");
+                    pushUndoSnapshot();
+                    const monthRec = ensureMonthRecord(state.currentMonthKey);
+                    monthRec.assignments = {};
+                    monthRec.syncedLeaves = {};
+                    monthRec.overrides = {};
+                    monthRec.locked = false;
+                    closeModal("clearMonthModal");
+                    renderPreservingScroll();
+                    persistDraft("Cleared month " + formatMonthBadge(state.currentMonthKey));
+                }
                 else if (action === "export-csv") exportMonthlyCSV();
             });
 
