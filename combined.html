@@ -845,7 +845,7 @@
                     html += `
                         <td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: #fecdd3; color: #991b1b; border-top: ${BOLD_BORDER}; border-bottom: ${BOLD_BORDER}; vertical-align: middle; text-align: center;"
                             class="text-xs font-black">
-                            <span>${count}</span>
+                            <span style="color: #991b1b; font-weight: 900;">${count}</span>
                         </td>
                     `;
                 });
@@ -886,7 +886,7 @@
                         html += `
                             <td style="width: ${dayColW}px; min-width: ${dayColW}px; height: ${rowH}px; background-color: ${cellBg}; color: ${cellText}; vertical-align: middle; text-align: center;"
                                 class="${cellFont}">
-                                <span>${val}</span>
+                                <span style="color: ${cellText}; font-weight: 900;">${val}</span>
                             </td>
                         `;
                     });
@@ -898,20 +898,20 @@
                 html += `</tbody></table>`;
                 container.innerHTML = html;
 
-                // Ensure Total Active & bottom counter rows (A, B, C, etc.) always reflect live grid values cleanly
+                // Compute and populate Total Active & bottom counter rows (A, B, C, etc.) cleanly from rendered day cells
                 try {
                     const tableNode = container.querySelector("table.roster-grid");
                     if (tableNode) {
-                        const allRows = Array.from(tableNode.querySelectorAll("tbody tr"));
+                        const tbodyEl = tableNode.querySelector("tbody");
+                        const allRows = Array.from(tbodyEl ? tbodyEl.querySelectorAll(":scope > tr") : []);
                         const empRows = allRows.filter(tr => {
-                            const firstTd = tr.querySelector("td");
+                            const firstTd = tr.querySelector(":scope > td");
                             if (!firstTd) return false;
-                            const txt = (firstTd.textContent || "").trim();
-                            return !txt.startsWith("--- EMS TEAM") && txt !== "Total Active" && !CORE_COUNTER_CODES.includes(txt) && !monthRec_check(txt);
+                            const txt = (firstTd.textContent || "").trim().toUpperCase();
+                            if (txt.startsWith("--- EMS TEAM") || txt === "TOTAL ACTIVE") return false;
+                            if (activeCounterCodes.some(c => c.toUpperCase() === txt)) return false;
+                            return true;
                         });
-                        function monthRec_check(lbl) {
-                            return activeCounterCodes.includes(lbl);
-                        }
                         const dayCount = daysList.length;
                         for (let colIdx = 1; colIdx <= dayCount; colIdx++) {
                             let activeSum = 0;
@@ -925,30 +925,31 @@
                                 countsByCode[rawVal] = (countsByCode[rawVal] || 0) + 1;
                             });
                             allRows.forEach(tr => {
-                                const firstTd = tr.querySelector("td");
+                                const firstTd = tr.querySelector(":scope > td");
                                 const targetTd = tr.children[colIdx];
                                 if (!firstTd || !targetTd) return;
                                 const label = (firstTd.textContent || "").trim().toUpperCase();
                                 if (label === "TOTAL ACTIVE") {
-                                    targetTd.innerHTML = `<span>${activeSum}</span>`;
-                                } else if (activeCounterCodes.includes(label)) {
+                                    targetTd.innerHTML = `<span style="color:#991b1b;font-weight:900;">${activeSum}</span>`;
+                                } else if (activeCounterCodes.some(c => c.toUpperCase() === label)) {
                                     const parts = label.split("+").map(s => s.trim()).filter(Boolean);
                                     let sumVal = 0;
                                     parts.forEach(p => { sumVal += (countsByCode[p] || 0); });
                                     const isCoreRow = CORE_COUNTER_CODES.includes(label);
                                     if (isCoreRow && sumVal === 0) {
-                                        targetTd.style.backgroundColor = "#dc2626";
-                                        targetTd.style.color = "#ffffff";
-                                    } else if (isCoreRow) {
-                                        targetTd.style.backgroundColor = "#ffffff";
-                                        targetTd.style.color = "#000000";
+                                        targetTd.style.setProperty("background-color", "#dc2626", "important");
+                                        targetTd.style.setProperty("color", "#ffffff", "important");
+                                        targetTd.innerHTML = `<span style="color:#ffffff;font-weight:900;">${sumVal}</span>`;
+                                    } else {
+                                        targetTd.style.setProperty("background-color", "#ffffff", "important");
+                                        targetTd.style.setProperty("color", "#000000", "important");
+                                        targetTd.innerHTML = `<span style="color:#000000;font-weight:900;">${sumVal}</span>`;
                                     }
-                                    targetTd.innerHTML = `<span>${sumVal}</span>`;
                                 }
                             });
                         }
                     }
-                } catch (e) {}
+                } catch (err) { console.error("Counter sync error:", err); }
             }
 
             function showToast(msg, type) {
