@@ -140,7 +140,8 @@
             text-indent: 0 !important;
             font-weight: 800 !important;
         }
-/* إخفاء الأزرار الزائدة وأيقونات القلم أثناء الطباعة و الـ PDF */
+
+        /* إخفاء الأزرار الزائدة وأيقونات القلم أثناء الطباعة و الـ PDF */
         @media print {
             .no-print,
             #loginGateOverlay,
@@ -151,33 +152,23 @@
             }
         }
 
-        .pdf-exporting .no-print,
-        .pdf-exporting tbody tr:last-child,
-        .pdf-exporting [data-action="open-add-code-modal"],
-        .pdf-exporting [data-action="open-add-counter-modal"] {
-            display: none !important;
-        }
-
         /* توسيط مثالي لجميع الخلايا والنصوص والحروف والأرقام في الـ PDF */
         .pdf-exporting table.roster-grid th,
         .pdf-exporting table.roster-grid td {
-            padding-top: 0 !important;
-            padding-bottom: 6px !important;
             vertical-align: middle !important;
-            line-height: 1.2 !important;
+            line-height: 1 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
             overflow: visible !important;
         }
 
-        .pdf-exporting table.roster-grid th > div,
-        .pdf-exporting table.roster-grid td > div {
-            display: flex !important;
-            align-items: center !important;
-            height: 100% !important;
-            padding-bottom: 2px !important;
-            overflow: visible !important;
+        .pdf-exporting table.roster-grid th > *,
+        .pdf-exporting table.roster-grid td > * {
+            position: relative !important;
+            top: -5px !important;
         }
 
-        /* منع قص أسماء الموظفين وأوقات الشفتات وتوسيطها */
+        /* منع قص أسماء الموظفين وأوقات الشفتات */
         .pdf-exporting .truncate,
         .pdf-exporting .emp-name-text,
         .pdf-exporting .legend-label-text {
@@ -185,10 +176,9 @@
             text-overflow: clip !important;
             white-space: nowrap !important;
             line-height: 1.3 !important;
-            padding-bottom: 2px !important;
         }
     </style>
-    </head>
+</head>
 <body class="min-h-screen flex flex-col">
 
     <!-- Login Gate Overlay -->
@@ -1749,20 +1739,28 @@
 
                 // Save current UI state
                 const prevShowPrevWeek = state.showPrevWeek;
+                const prevViewingDraft = state.viewingDraft;
                 const prevOverflow = scrollContainer ? scrollContainer.style.overflow : "";
                 const prevCardOverflow = outerCard ? outerCard.style.overflow : "";
                 const prevWidth = wrapper.style.width;
 
                 try {
-                    // Temporarily hide Prev 7d strip and unlock scroll to capture full roster cleanly
-                    if (state.showPrevWeek) {
-                        state.showPrevWeek = false;
-                        renderUnifiedRosterTable(ensureMonthRecord(state.currentMonthKey));
-                    }
+                    // Render clean read-only table so rowspan & borders align with zero gaps
+                    state.showPrevWeek = false;
+                    state.viewingDraft = false;
+                    renderUnifiedRosterTable(ensureMonthRecord(state.currentMonthKey));
+
                     if (scrollContainer) scrollContainer.style.overflow = "visible";
                     if (outerCard) outerCard.style.overflow = "visible";
                     wrapper.style.width = "max-content";
                     wrapper.classList.add("pdf-exporting");
+
+                    // Wrap plain text cells in a span so html2canvas centers them vertically
+                    wrapper.querySelectorAll("table.roster-grid th, table.roster-grid td").forEach(cell => {
+                        if (cell.children.length === 0 && cell.textContent.trim() !== "") {
+                            cell.innerHTML = `<span>${cell.innerHTML}</span>`;
+                        }
+                    });
 
                     // Temporarily unstick employee column and enforce crisp 1.5px borders for capture
                     const stickyCells = wrapper.querySelectorAll(".sticky-emp-col");
@@ -1825,10 +1823,9 @@
                     if (scrollContainer) scrollContainer.style.overflow = prevOverflow;
                     if (outerCard) outerCard.style.overflow = prevCardOverflow;
                     wrapper.style.width = prevWidth;
-                    if (prevShowPrevWeek !== state.showPrevWeek) {
-                        state.showPrevWeek = prevShowPrevWeek;
-                        renderUnifiedRosterTable(ensureMonthRecord(state.currentMonthKey));
-                    }
+                    state.showPrevWeek = prevShowPrevWeek;
+                    state.viewingDraft = prevViewingDraft;
+                    renderUnifiedRosterTable(ensureMonthRecord(state.currentMonthKey));
 
                     // Build A4 Landscape PDF fitted cleanly on 1 page
                     const { jsPDF } = window.jspdf;
@@ -1851,14 +1848,12 @@
                     pdf.save(`HQ_Roster_${state.currentMonthKey}.pdf`);
                     showToast("High-Res PDF downloaded successfully!", "success");
                 } catch (err) {
-                    wrapper.classList.remove("pdf-exporting");
                     if (scrollContainer) scrollContainer.style.overflow = prevOverflow;
                     if (outerCard) outerCard.style.overflow = prevCardOverflow;
                     wrapper.style.width = prevWidth;
-                    if (prevShowPrevWeek !== state.showPrevWeek) {
-                        state.showPrevWeek = prevShowPrevWeek;
-                        renderUnifiedRosterTable(ensureMonthRecord(state.currentMonthKey));
-                    }
+                    state.showPrevWeek = prevShowPrevWeek;
+                    state.viewingDraft = prevViewingDraft;
+                    renderUnifiedRosterTable(ensureMonthRecord(state.currentMonthKey));
                     window.print();
                 }
             }
@@ -2275,6 +2270,5 @@
             bootAppWithFirebase();
         })();
     </script>
-
 </body>
 </html>
